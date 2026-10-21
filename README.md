@@ -85,6 +85,26 @@ The native `Dockerfile` installs `freetype`, `fontconfig` and the DejaVu fonts i
 build stage, because POI and Java2D need font metrics and system fonts at runtime,
 and copies them into the package-manager-less Quarkus micro image.
 
+## Generate PowerPoint example
+
+`GET /ppt/contoh` returns a generated presentation
+(`application/vnd.openxmlformats-officedocument.presentationml.presentation`) with
+eight 16:9 slides that demonstrate:
+
+- A cover with a brand panel and summary bullets
+- Calibri, Arial, Times New Roman, Georgia, Courier New, Consolas, and Verdana
+- Bold, italic, bold-italic, underline, and colored text runs
+- Font sizes from 12 pt to 36 pt
+- A JPEG image embedded into a slide
+- Bar and line charts rendered to PNG with Java2D
+- A styled summary table built with `XSLFTable`
+- A closing slide
+
+PowerPoint support uses Apache POI's XSLF (`XMLSlideShow`), which `quarkus-poi`
+already provides. Note that `/ppt/contoh` currently works in JVM mode only: XMLBeans
+instantiates presentation schema arrays reflectively, which GraalVM rejects in a
+native image.
+
 ## Creating a native executable
 
 You can create a native executable using:

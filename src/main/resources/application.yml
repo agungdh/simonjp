@@ -3,3 +3,8 @@ quarkus:
     resources:
       includes:
         - images/**
+    # POI's DrawPaint and PresetColor keep static java.awt.Color instances, which
+    # GraalVM rejects in the image heap. Their static state is trivial, so initialize
+    # them at run time.
+    additional-build-args:
+      - --initialize-at-run-time=org.apache.poi.sl.draw.DrawPaint,org.apache.poi.sl.usermodel.PresetColor
