@@ -1,0 +1,5 @@
+quarkus:
+  native:
+    resources:
+      includes:
+        - images/**
