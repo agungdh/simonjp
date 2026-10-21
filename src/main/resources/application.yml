@@ -1,4 +1,12 @@
 quarkus:
+  # PDFBox logs a fallback-font warning for every standard 14 font because it maps
+  # each base font to a metric-compatible system font for in-memory text metrics
+  # (the PDF still references the base font by name, nothing is embedded). The
+  # mapping always falls back on a headless image, so the warnings are noise.
+  log:
+    category:
+      "org.apache.pdfbox.pdmodel.font":
+        level: ERROR
   native:
     resources:
       includes:
