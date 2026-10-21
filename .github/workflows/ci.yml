@@ -13,6 +13,9 @@ jobs:
   build:
     name: build (${{ matrix.arch }})
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -42,11 +45,76 @@ jobs:
       - name: Build native executable
         run: ./gradlew build -Dquarkus.native.enabled=true -Dquarkus.package.jar.enabled=false -Dquarkus.native.march=${{ matrix.march }}
 
-      - name: Build Docker image
-        run: docker build -t simonjp:${{ matrix.arch }} .
-
       - name: Upload native executable
         uses: actions/upload-artifact@v7
         with:
           name: simonjp-linux-${{ matrix.arch }}
           path: build/*-runner
+
+      - name: Compute image name
+        id: image
+        run: echo "name=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
+        if: github.event_name == 'pull_request'
+        run: docker build -t simonjp:${{ matrix.arch }} .
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        if: github.event_name != 'pull_request'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        if: github.event_name != 'pull_request'
+        run: |
+          docker buildx build \
+            --platform linux/${{ matrix.arch }} \
+            --provenance=false \
+            --label org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }} \
+            --label org.opencontainers.image.revision=${{ github.sha }} \
+            --tag ${{ steps.image.outputs.name }}:${{ github.sha }}-${{ matrix.arch }} \
+            --push .
+
+  merge:
+    name: publish multi-arch image
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create multi-arch manifest
+        run: |
+          IMAGE="ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          docker buildx imagetools create \
+            --tag "$IMAGE:$SHORT_SHA" \
+            --tag "$IMAGE:latest" \
+            "$IMAGE:${{ github.sha }}-amd64" \
+            "$IMAGE:${{ github.sha }}-arm64"
+          {
+            echo "## Published images"
+            echo ""
+            echo "| Tag | Platforms |"
+            echo "| --- | --- |"
+            echo "| \`$IMAGE:latest\` | linux/amd64, linux/arm64 |"
+            echo "| \`$IMAGE:$SHORT_SHA\` | linux/amd64, linux/arm64 |"
+          } >> "$GITHUB_STEP_SUMMARY"
