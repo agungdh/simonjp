@@ -16,6 +16,7 @@ dependencies {
     implementation(enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}"))
     implementation("io.quarkus:quarkus-rest")
     implementation("io.quarkus:quarkus-arc")
+    implementation("io.quarkiverse.pdfbox:quarkus-pdfbox:1.2.3")
     testImplementation("io.quarkus:quarkus-junit")
     testImplementation("io.rest-assured:rest-assured")
 }

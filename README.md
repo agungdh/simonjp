@@ -35,6 +35,24 @@ If you want to build an _über-jar_, execute the following command:
 
 The application, packaged as an _über-jar_, is now runnable using `java -jar build/*-runner.jar`.
 
+## Generate PDF example
+
+`GET /pdf/contoh` returns a generated PDF (`application/pdf`) that demonstrates:
+
+- Helvetica, Times, and Courier (standard 14 fonts), including bold, italic, and bold-italic
+- Underlined text, custom colors, and font sizes from 9 pt to 36 pt
+- A JPEG image embedded directly with `DCTDecode` (no `ImageIO` needed)
+- Vector bar and line charts drawn with PDF operators
+
+PDF support comes from the Quarkiverse extension
+[`io.quarkiverse.pdfbox:quarkus-pdfbox`](https://docs.quarkiverse.io/quarkus-pdfbox/dev/index.html),
+which registers the GraalVM reflection and resource configuration for native images and pulls in
+`quarkus-awt`.
+
+The sample JPEG is registered for native images with
+`quarkus.native.resources.includes=images/**` in `application.properties`. The native `Dockerfile`
+also copies the generated `build/*.so` files, which `quarkus-awt` produces.
+
 ## Creating a native executable
 
 You can create a native executable using:
