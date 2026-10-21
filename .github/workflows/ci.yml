@@ -42,6 +42,9 @@ jobs:
       - name: Build native executable
         run: ./gradlew build -Dquarkus.native.enabled=true -Dquarkus.native.march=${{ matrix.march }}
 
+      - name: Build Docker image
+        run: docker build -f src/main/docker/Dockerfile.native-micro -t simonjp:${{ matrix.arch }} .
+
       - name: Upload native executable
         uses: actions/upload-artifact@v7
         with:
