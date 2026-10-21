@@ -81,8 +81,9 @@ also copies the generated `build/*.so` files, which `quarkus-awt` produces.
 Word and Excel support comes from the Quarkiverse extension
 [`io.quarkiverse.poi:quarkus-poi`](https://github.com/quarkiverse/quarkus-poi), which
 brings Apache POI 5.5.1 and registers the GraalVM reflection and resource configuration.
-The native `Dockerfile` installs `freetype` and `fontconfig` because POI and Java2D need
-font metrics at runtime.
+The native `Dockerfile` installs `freetype`, `fontconfig` and the DejaVu fonts in a
+build stage, because POI and Java2D need font metrics and system fonts at runtime,
+and copies them into the package-manager-less Quarkus micro image.
 
 ## Creating a native executable
 
