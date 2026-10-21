@@ -11,7 +11,18 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    name: build (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-26.04
+            arch: amd64
+            march: x86-64-v2
+          - os: ubuntu-26.04-arm
+            arch: arm64
+            march: armv8-a
     steps:
       - uses: actions/checkout@v7
 
@@ -19,14 +30,20 @@ jobs:
         uses: graalvm/setup-graalvm@v1
         with:
           distribution: mandrel
-          java-version: 25
+          java-version: '25'
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
 
       - name: Install native-image dependencies
-        run: sudo apt-get update && sudo apt-get install -y gcc zlib1g-dev libfreetype6-dev
+        run: sudo apt-get update && sudo apt-get install -y gcc g++ zlib1g-dev libfreetype6-dev
 
       - name: Build native executable
-        run: ./gradlew build -Dquarkus.native.enabled=true
+        run: ./gradlew build -Dquarkus.native.enabled=true -Dquarkus.native.march=${{ matrix.march }}
+
+      - name: Upload native executable
+        uses: actions/upload-artifact@v7
+        with:
+          name: simonjp-linux-${{ matrix.arch }}
+          path: build/*-runner
