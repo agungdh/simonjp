@@ -10,7 +10,7 @@
 #
 # Then, build the image with:
 #
-# docker build -f src/main/docker/Dockerfile.native-micro -t quarkus/simonjp .
+# docker build -t quarkus/simonjp .
 #
 # Then run the container using:
 #
