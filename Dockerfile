@@ -20,6 +20,11 @@
 # To use UBI 8, switch to `quay.io/quarkus/quarkus-micro-image:2.0`.
 ###
 FROM quay.io/quarkus/ubi9-quarkus-micro-image:2.0
+USER root
+# Apache POI and Java2D chart rendering need font metrics in native images.
+RUN microdnf update -y \
+    && microdnf install -y freetype fontconfig \
+    && microdnf clean all
 WORKDIR /work/
 RUN chown 1001 /work \
     && chmod "g+rwX" /work \

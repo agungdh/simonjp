@@ -17,6 +17,7 @@ dependencies {
     implementation("io.quarkus:quarkus-rest")
     implementation("io.quarkus:quarkus-arc")
     implementation("io.quarkiverse.pdfbox:quarkus-pdfbox:1.2.3")
+    implementation("io.quarkiverse.poi:quarkus-poi:2.2.2")
     testImplementation("io.quarkus:quarkus-junit")
     testImplementation("io.rest-assured:rest-assured")
 }

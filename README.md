@@ -53,6 +53,37 @@ The sample JPEG is registered for native images with
 `quarkus.native.resources.includes=images/**` in `application.properties`. The native `Dockerfile`
 also copies the generated `build/*.so` files, which `quarkus-awt` produces.
 
+## Generate Word example
+
+`GET /word/contoh` returns a generated Word document
+(`application/vnd.openxmlformats-officedocument.wordprocessingml.document`) that demonstrates:
+
+- Calibri, Arial, Times New Roman, Georgia, Courier New, Consolas, and Verdana
+- Mixed runs in one paragraph: bold, italic, bold-italic, underline, and colors
+- Font sizes from 9 pt to 36 pt
+- A table with a styled header and alternating row colors
+- A JPEG image embedded with `XWPFRun.addPicture`
+- Bar and line charts rendered to PNG with Java2D and embedded as pictures
+  (Apache POI has no Word chart API)
+
+## Generate Excel example
+
+`GET /excel/contoh` returns a generated Excel workbook
+(`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`) with three sheets:
+
+- **Gaya Teks**: fonts, sizes 9 pt to 36 pt, bold/italic/underline, and colors applied
+  through `XSSFCellStyle`
+- **Data**: monthly revenue table, growth formulas, number formats, freeze panes,
+  auto-filter, and an embedded JPEG
+- **Chart**: native Excel bar and line charts built with `XSSFChart`/XDDF, referencing
+  the `Data` sheet
+
+Word and Excel support comes from the Quarkiverse extension
+[`io.quarkiverse.poi:quarkus-poi`](https://github.com/quarkiverse/quarkus-poi), which
+brings Apache POI 5.5.1 and registers the GraalVM reflection and resource configuration.
+The native `Dockerfile` installs `freetype` and `fontconfig` because POI and Java2D need
+font metrics at runtime.
+
 ## Creating a native executable
 
 You can create a native executable using:
