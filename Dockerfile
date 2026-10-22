@@ -1,11 +1,12 @@
 ####
-# This Dockerfile is used in order to build a container that runs the Quarkus application in native (no JVM) mode.
-# It uses the Rocky Linux 9 minimal base image, which provides the native runtime libraries.
-# Check https://quarkus.io/guides/quarkus-runtime-base-image for further information about native images.
+# This Dockerfile builds a container that runs the Quarkus application in native (no JVM) mode.
+# The runtime is the distroless Debian 13 (trixie) image, which ships only glibc, zlib,
+# libstdc++/libgcc, OpenSSL and CA certificates - no shell and no package manager.
+# Check https://github.com/GoogleContainerTools/distroless for the available tags.
 #
 # Before building the container image run:
 #
-# ./gradlew build -Dquarkus.native.enabled=true
+# ./gradlew build -Dquarkus.native.enabled=true -Dquarkus.package.jar.enabled=false
 #
 # Then, build the image with:
 #
@@ -16,14 +17,16 @@
 # docker run -i --rm -p 8080:8080 quarkus/simonjp
 ###
 
-FROM quay.io/rockylinux/rockylinux:9-minimal
-USER root
+FROM gcr.io/distroless/cc-debian13:nonroot
+
 WORKDIR /work/
-RUN chown -R 1001:root /work \
-    && chmod -R "g+rwX" /work
-COPY --chown=1001:root --chmod=0755 build/*-runner /work/application
+COPY --chown=nonroot:nonroot --chmod=0755 build/*-runner /work/application
+
+# Native executables read runtime configuration from environment variables too,
+# so the container does not depend on shell-style -D arguments.
+ENV QUARKUS_HTTP_HOST=0.0.0.0
 
 EXPOSE 8080
-USER 1001
+USER nonroot
 
-ENTRYPOINT ["./application", "-Dquarkus.http.host=0.0.0.0"]
+ENTRYPOINT ["/work/application"]
