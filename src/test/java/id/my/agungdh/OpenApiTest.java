@@ -21,8 +21,7 @@ class OpenApiTest {
                 .body("info.title", is("SimonJP API"))
                 .body("paths", hasKey("/hello"))
                 .body("paths", hasKey("/contoh/data"))
-                .body("paths", hasKey("/contoh/data/{id}"))
-                .body("paths", hasKey("/pdf/contoh"));
+                .body("paths", hasKey("/contoh/data/{id}"));
     }
 
     @Test

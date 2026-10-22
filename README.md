@@ -35,41 +35,6 @@ If you want to build an _über-jar_, execute the following command:
 
 The application, packaged as an _über-jar_, is now runnable using `java -jar build/*-runner.jar`.
 
-## Generate PDF example
-
-`GET /pdf/contoh` returns a generated PDF (`application/pdf`) that demonstrates:
-
-- Helvetica, Times, and Courier (standard 14 fonts), including bold, italic, and bold-italic
-- Underlined text, custom colors, and font sizes from 9 pt to 36 pt
-- A JPEG image embedded directly with `DCTDecode` (no `ImageIO` needed)
-- Vector bar and line charts drawn with PDF operators
-
-PDF support comes from the Quarkiverse extension
-[`io.quarkiverse.pdfbox:quarkus-pdfbox`](https://docs.quarkiverse.io/quarkus-pdfbox/dev/index.html),
-which registers the GraalVM reflection and resource configuration for native images and pulls in
-`quarkus-awt`.
-
-The sample JPEG is registered for native images with
-`quarkus.native.resources.includes=images/**` in `application.yml`. The native `Dockerfile`
-also copies the generated `build/*.so` files, which `quarkus-awt` produces.
-
-PDFBox maps the standard 14 fonts to metric-compatible system fonts. The `Dockerfile` installs
-Liberation Sans, Serif, and Mono on the Rocky Linux 9 minimal runtime image, so those mappings
-resolve without fallback-font warnings.
-
-PDFBox also scans the installed fonts the first time a standard 14 font is created and stores the
-result in `.pdfbox.cache`. Building that cache on every fresh container would mean a font scan on
-the first PDF request, so the image build does it up front:
-
-- the `fonts` stage installs the Liberation packages that the runtime image also copies;
-- the `fontcache` stage runs `id.my.agungdh.fontcache.FontCacheBuilder` (assembled by the
-  `fontCacheTool` Gradle task, which is part of `build`) against those exact fonts;
-- the runtime image copies the cache to `/work/fontcache` and starts with
-  `-Dpdfbox.fontcache=/work/fontcache`, so PDFBox only reads the pre-built cache.
-
-For local runs, `./gradlew quarkusDev` first runs the `warmPdfBoxFontCache` task, which writes the
-same cache to PDFBox's default location (`~/.pdfbox.cache`).
-
 ## API documentation (OpenAPI / Swagger UI)
 
 The API is documented with [SmallRye OpenAPI](https://quarkus.io/guides/smallrye-openapi) and comes
@@ -87,7 +52,7 @@ descriptions follow the code instead of a hand-written file.
 
 ```shell script
 curl -s "localhost:8080/q/openapi?format=json" | jq '.paths | keys'
-# ["/contoh/data", "/contoh/data/{id}", "/hello", "/pdf/contoh"]
+# ["/contoh/data", "/contoh/data/{id}", "/hello"]
 ```
 
 ## Lombok, MapStruct, and record DTOs
@@ -112,9 +77,7 @@ Endpoints:
 | `POST` | `/contoh/data` | Accepts a `SalamRequest`, returns `201` with the created `SalamDTO` |
 
 `/hello` and `/contoh/data` are annotated with `@RunOnVirtualThread`, so those blocking endpoints run
-on virtual threads; `/hello` exposes the actual thread in its `thread` field. PDF generation
-deliberately stays on a worker thread: it is CPU-bound, and virtual threads only help I/O-bound
-work.
+on virtual threads; `/hello` exposes the actual thread in its `thread` field.
 
 ```shell script
 curl -s localhost:8080/hello
@@ -136,9 +99,8 @@ client. `SalamRequest` only contains the fields a client may set; the mapper ign
 Lombok is applied to every hand-written class where it removes boilerplate:
 
 - `domain/Salam` — `@Data`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`
-- `GreetingResource`, `PdfDemoResource`, `DataResource` — `@JBossLog` for the logger
-- `DataResource`, `SalamService`, `ChartPainter` — `@RequiredArgsConstructor` for constructor injection
-- `PdfDemoGenerator` — `@NoArgsConstructor(access = AccessLevel.PRIVATE)`
+- `GreetingResource`, `DataResource` — `@JBossLog` for the logger
+- `DataResource`, `SalamService` — `@RequiredArgsConstructor` for constructor injection
 - `SalamService` — `@PostConstruct` seeds the sample data after the generated constructor runs
 
 There is nothing for Lombok to generate in the record DTOs, the MapStruct interface, or the tests,

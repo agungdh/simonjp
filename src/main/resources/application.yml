@@ -1,14 +1,9 @@
 quarkus:
-  native:
-    resources:
-      includes:
-        - images/**
   smallrye-openapi:
     info-title: SimonJP API
     info-version: 1.0.0
     info-description: >-
-      Contoh REST API Quarkus dengan virtual threads, DTO record, Lombok, MapStruct,
-      dan generator PDF.
+      Contoh REST API Quarkus dengan virtual threads, DTO record, Lombok, dan MapStruct.
   swagger-ui:
     # Tetap tersedia juga di build production/native, bukan hanya dev mode.
     always-include: true

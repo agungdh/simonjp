@@ -1,8 +1,5 @@
 *
 !build/*-runner
 !build/*-runner.jar
-!build/*.so
 !build/lib/*
 !build/quarkus-app/*
-!build/fontcache-tool
-!build/fontcache-tool/**
