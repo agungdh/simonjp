@@ -57,6 +57,26 @@ PDFBox maps the standard 14 fonts to metric-compatible system fonts. The `Docker
 Liberation Sans, Serif, and Mono on the Rocky Linux 9 minimal runtime image, so those mappings
 resolve without fallback-font warnings.
 
+## API documentation (OpenAPI / Swagger UI)
+
+The API is documented with [SmallRye OpenAPI](https://quarkus.io/guides/smallrye-openapi) and comes
+with a Swagger UI. Both are available in dev mode and in the packaged/native build
+(`quarkus.swagger-ui.always-include=true` in `application.yml`).
+
+| URL | Description |
+| --- | --- |
+| <http://localhost:8080/q/swagger-ui> | Interactive Swagger UI |
+| <http://localhost:8080/q/openapi> | OpenAPI document (YAML by default, `?format=json` for JSON) |
+
+The document is generated from the JAX-RS annotations plus the MicroProfile OpenAPI annotations on
+the resources and record DTOs (`@Tag`, `@Operation`, `@APIResponse`, `@Parameter`, `@Schema`), so the
+descriptions follow the code instead of a hand-written file.
+
+```shell script
+curl -s "localhost:8080/q/openapi?format=json" | jq '.paths | keys'
+# ["/contoh/data", "/contoh/data/{id}", "/hello", "/pdf/contoh"]
+```
+
 ## Lombok, MapStruct, and record DTOs
 
 The sample API is split into layers so the mapping is easy to see:
