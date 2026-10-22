@@ -11,12 +11,12 @@ import jakarta.ws.rs.core.MediaType;
 import lombok.extern.jbosslog.JBossLog;
 
 @JBossLog
+@RunOnVirtualThread
 @Path("/hello")
 public class GreetingResource {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @RunOnVirtualThread
     public HelloDTO hello() {
         Thread thread = Thread.currentThread();
         log.infof("GET /hello running on %s", thread);

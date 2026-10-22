@@ -2,6 +2,7 @@ package id.my.agungdh.pdf;
 
 import java.io.IOException;
 
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -9,6 +10,7 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.jbosslog.JBossLog;
 
 @JBossLog
+@RunOnVirtualThread
 @Path("/pdf")
 public class PdfDemoResource {
 

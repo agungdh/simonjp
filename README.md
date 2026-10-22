@@ -78,6 +78,10 @@ Endpoints:
 | `GET` | `/contoh/data/{id}` | Returns one `SalamDTO`, or `404` when the id is unknown |
 | `POST` | `/contoh/data` | Accepts a `SalamRequest`, returns `201` with the created `SalamDTO` |
 
+All resources are annotated with `@RunOnVirtualThread` at class level, so every endpoint — including
+the blocking PDF generation and in-memory data access — runs on a virtual thread. The `/hello`
+response exposes the actual thread in its `thread` field, which makes this easy to verify.
+
 ```shell script
 curl -s localhost:8080/hello
 # {"message":"Hello from Quarkus REST","timestamp":"...","thread":"VirtualThread[...]","virtualThread":true}

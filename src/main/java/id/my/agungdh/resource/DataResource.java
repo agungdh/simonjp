@@ -5,6 +5,7 @@ import java.util.List;
 import id.my.agungdh.dto.SalamDTO;
 import id.my.agungdh.dto.SalamRequest;
 import id.my.agungdh.service.SalamService;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
@@ -22,6 +23,7 @@ import lombok.extern.jbosslog.JBossLog;
  */
 @JBossLog
 @RequiredArgsConstructor
+@RunOnVirtualThread
 @Path("/contoh/data")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
