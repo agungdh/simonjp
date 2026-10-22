@@ -2,12 +2,13 @@ package id.my.agungdh.pdf;
 
 import java.io.IOException;
 
-import io.quarkus.logging.Log;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Response;
+import lombok.extern.jbosslog.JBossLog;
 
+@JBossLog
 @Path("/pdf")
 public class PdfDemoResource {
 
@@ -15,7 +16,7 @@ public class PdfDemoResource {
     @Path("/contoh")
     @Produces("application/pdf")
     public Response contoh() throws IOException {
-        Log.infof("GET /pdf/contoh running on %s", Thread.currentThread());
+        log.infof("GET /pdf/contoh running on %s", Thread.currentThread());
         byte[] pdf = PdfDemoGenerator.build();
         return Response.ok(pdf)
                 .type("application/pdf")

@@ -7,6 +7,10 @@ import java.util.Locale;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class ChartPainter {
 
     record Series(String name, float red, float green, float blue, double[] values) {
@@ -20,12 +24,6 @@ final class ChartPainter {
     private final PDFont helvetica;
     private final PDFont helveticaBold;
     private final PDFont courier;
-
-    ChartPainter(PDFont helvetica, PDFont helveticaBold, PDFont courier) {
-        this.helvetica = helvetica;
-        this.helveticaBold = helveticaBold;
-        this.courier = courier;
-    }
 
     void barChart(PDPageContentStream cs, float x, float y, float width, float height,
                   String title, String unit, String[] labels, double[] values,

@@ -20,6 +20,10 @@ import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class PdfDemoGenerator {
 
     private static final float PAGE_WIDTH = PDRectangle.A4.getWidth();
@@ -60,9 +64,6 @@ public final class PdfDemoGenerator {
     private PDPageContentStream content;
     private float cursorY;
     private int rowIndex;
-
-    private PdfDemoGenerator() {
-    }
 
     public static byte[] build() throws IOException {
         return new PdfDemoGenerator().render();

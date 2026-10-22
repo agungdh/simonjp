@@ -10,11 +10,14 @@ import id.my.agungdh.domain.Salam;
 import id.my.agungdh.dto.SalamDTO;
 import id.my.agungdh.dto.SalamRequest;
 import id.my.agungdh.mapper.SalamMapper;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Contoh service in-memory: entity disimpan di list, lalu dipetakan ke DTO saat keluar.
  */
+@RequiredArgsConstructor
 @ApplicationScoped
 public class SalamService {
 
@@ -22,8 +25,8 @@ public class SalamService {
     private final List<Salam> data = new CopyOnWriteArrayList<>();
     private final AtomicLong sequence = new AtomicLong();
 
-    public SalamService(SalamMapper mapper) {
-        this.mapper = mapper;
+    @PostConstruct
+    void seedData() {
         seed("Agung", "Halo dari data contoh");
         seed("Budi", "DTO bikin bentuk response API tetap stabil");
         seed("Citra", "Field internal tidak ikut terkirim ke client");

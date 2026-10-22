@@ -5,7 +5,6 @@ import java.util.List;
 import id.my.agungdh.dto.SalamDTO;
 import id.my.agungdh.dto.SalamRequest;
 import id.my.agungdh.service.SalamService;
-import io.quarkus.logging.Log;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
@@ -15,10 +14,14 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.jbosslog.JBossLog;
 
 /**
  * Contoh endpoint yang selalu berbicara dalam DTO record, bukan entity.
  */
+@JBossLog
+@RequiredArgsConstructor
 @Path("/contoh/data")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -26,13 +29,9 @@ public class DataResource {
 
     private final SalamService salamService;
 
-    public DataResource(SalamService salamService) {
-        this.salamService = salamService;
-    }
-
     @GET
     public List<SalamDTO> semua() {
-        Log.info("GET /contoh/data");
+        log.info("GET /contoh/data");
         return salamService.semua();
     }
 

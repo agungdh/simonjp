@@ -95,6 +95,17 @@ curl -s -X POST localhost:8080/contoh/data \
 client. `SalamRequest` only contains the fields a client may set; the mapper ignores `id`,
 `catatanInternal`, and `dibuatPada` when converting the request to an entity.
 
+Lombok is applied to every hand-written class where it removes boilerplate:
+
+- `domain/Salam` — `@Data`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`
+- `GreetingResource`, `PdfDemoResource`, `DataResource` — `@JBossLog` for the logger
+- `DataResource`, `SalamService`, `ChartPainter` — `@RequiredArgsConstructor` for constructor injection
+- `PdfDemoGenerator` — `@NoArgsConstructor(access = AccessLevel.PRIVATE)`
+- `SalamService` — `@PostConstruct` seeds the sample data after the generated constructor runs
+
+There is nothing for Lombok to generate in the record DTOs, the MapStruct interface, or the tests,
+so those stay plain Java.
+
 Lombok is declared as `compileOnly` and both Lombok and MapStruct run only at compile time
 (`annotationProcessor`). The `lombok-mapstruct-binding` processor must run between them so MapStruct
 can see Lombok's generated builder/getters. Because no reflection or runtime processing is involved,
