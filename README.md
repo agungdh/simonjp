@@ -53,9 +53,9 @@ The sample JPEG is registered for native images with
 `quarkus.native.resources.includes=images/**` in `application.yml`. The native `Dockerfile`
 also copies the generated `build/*.so` files, which `quarkus-awt` produces.
 
-PDFBox maps the standard 14 fonts to metric-compatible system fonts. The `Dockerfile` copies
-Liberation Sans, Serif, and Mono from a CentOS Stream 9 build stage into the UBI 9 minimal
-runtime image, so those mappings resolve without fallback-font warnings.
+PDFBox maps the standard 14 fonts to metric-compatible system fonts. The `Dockerfile` installs
+Liberation Sans, Serif, and Mono on the Rocky Linux 9 minimal runtime image, so those mappings
+resolve without fallback-font warnings.
 
 ## Creating a native executable
 
