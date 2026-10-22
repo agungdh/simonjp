@@ -57,6 +57,49 @@ PDFBox maps the standard 14 fonts to metric-compatible system fonts. The `Docker
 Liberation Sans, Serif, and Mono on the Rocky Linux 9 minimal runtime image, so those mappings
 resolve without fallback-font warnings.
 
+## Lombok, MapStruct, and record DTOs
+
+The sample API is split into layers so the mapping is easy to see:
+
+| Layer | Class | Purpose |
+| --- | --- | --- |
+| Entity | `domain/Salam` | Mutable model with Lombok (`@Data`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`) |
+| DTO | `dto/SalamDTO`, `dto/SalamRequest`, `dto/HelloDTO` | Immutable `record` DTOs used by the REST layer |
+| Mapper | `mapper/SalamMapper` | MapStruct mapper with `componentModel = "cdi"`, injectable as a CDI bean |
+| Service | `service/SalamService` | In-memory sample data and entity <-> DTO mapping |
+| Resource | `resource/DataResource` | REST endpoints that only expose DTOs |
+
+Endpoints:
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/hello` | Returns `HelloDTO`: message, timestamp, thread name, and virtual-thread flag |
+| `GET` | `/contoh/data` | Returns the sample data as a list of `SalamDTO` |
+| `GET` | `/contoh/data/{id}` | Returns one `SalamDTO`, or `404` when the id is unknown |
+| `POST` | `/contoh/data` | Accepts a `SalamRequest`, returns `201` with the created `SalamDTO` |
+
+```shell script
+curl -s localhost:8080/hello
+# {"message":"Hello from Quarkus REST","timestamp":"...","thread":"VirtualThread[...]","virtualThread":true}
+
+curl -s localhost:8080/contoh/data
+# [{"id":1,"nama":"Agung","pesan":"Halo dari data contoh","dibuatPada":"..."}, ...]
+
+curl -s -X POST localhost:8080/contoh/data \
+  -H 'Content-Type: application/json' \
+  -d '{"nama":"Dewi","pesan":"Halo dari POST"}'
+# {"id":4,"nama":"Dewi","pesan":"Halo dari POST","dibuatPada":"..."}
+```
+
+`Salam.catatanInternal` exists on the entity but is not part of `SalamDTO`, so it never reaches the
+client. `SalamRequest` only contains the fields a client may set; the mapper ignores `id`,
+`catatanInternal`, and `dibuatPada` when converting the request to an entity.
+
+Lombok is declared as `compileOnly` and both Lombok and MapStruct run only at compile time
+(`annotationProcessor`). The `lombok-mapstruct-binding` processor must run between them so MapStruct
+can see Lombok's generated builder/getters. Because no reflection or runtime processing is involved,
+these classes work in a native image without extra configuration.
+
 ## Creating a native executable
 
 You can create a native executable using:

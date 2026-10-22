@@ -1,5 +1,8 @@
 package id.my.agungdh;
 
+import java.time.OffsetDateTime;
+
+import id.my.agungdh.dto.HelloDTO;
 import io.quarkus.logging.Log;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.ws.rs.GET;
@@ -11,10 +14,15 @@ import jakarta.ws.rs.core.MediaType;
 public class GreetingResource {
 
     @GET
-    @Produces(MediaType.TEXT_PLAIN)
+    @Produces(MediaType.APPLICATION_JSON)
     @RunOnVirtualThread
-    public String hello() {
-        Log.infof("GET /hello running on %s", Thread.currentThread());
-        return "Hello from Quarkus REST";
+    public HelloDTO hello() {
+        Thread thread = Thread.currentThread();
+        Log.infof("GET /hello running on %s", thread);
+        return new HelloDTO(
+                "Hello from Quarkus REST",
+                OffsetDateTime.now(),
+                thread.toString(),
+                thread.isVirtual());
     }
 }
