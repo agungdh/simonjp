@@ -57,6 +57,19 @@ PDFBox maps the standard 14 fonts to metric-compatible system fonts. The `Docker
 Liberation Sans, Serif, and Mono on the Rocky Linux 9 minimal runtime image, so those mappings
 resolve without fallback-font warnings.
 
+PDFBox also scans the installed fonts the first time a standard 14 font is created and stores the
+result in `.pdfbox.cache`. Building that cache on every fresh container would mean a font scan on
+the first PDF request, so the image build does it up front:
+
+- the `fonts` stage installs the Liberation packages that the runtime image also copies;
+- the `fontcache` stage runs `id.my.agungdh.fontcache.FontCacheBuilder` (assembled by the
+  `fontCacheTool` Gradle task, which is part of `build`) against those exact fonts;
+- the runtime image copies the cache to `/work/fontcache` and starts with
+  `-Dpdfbox.fontcache=/work/fontcache`, so PDFBox only reads the pre-built cache.
+
+For local runs, `./gradlew quarkusDev` first runs the `warmPdfBoxFontCache` task, which writes the
+same cache to PDFBox's default location (`~/.pdfbox.cache`).
+
 ## API documentation (OpenAPI / Swagger UI)
 
 The API is documented with [SmallRye OpenAPI](https://quarkus.io/guides/smallrye-openapi) and comes

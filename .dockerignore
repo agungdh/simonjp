@@ -4,3 +4,5 @@
 !build/*.so
 !build/lib/*
 !build/quarkus-app/*
+!build/fontcache-tool
+!build/fontcache-tool/**
