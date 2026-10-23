@@ -24,6 +24,13 @@ dependencies {
     implementation("io.quarkus:quarkus-smallrye-openapi")
     implementation("io.quarkus:quarkus-swagger-ui")
 
+    // Database: Hibernate ORM, PostgreSQL driver, dan schema migration dengan Flyway.
+    implementation("io.quarkus:quarkus-hibernate-orm")
+    implementation("io.quarkus:quarkus-jdbc-postgresql")
+    implementation("io.quarkus:quarkus-flyway")
+    // Flyway 10+ memisahkan dukungan tiap database ke modul sendiri.
+    implementation("org.flywaydb:flyway-database-postgresql")
+
     // Lombok hanya dipakai saat compile, tidak ikut ke runtime/native image.
     compileOnly("org.projectlombok:lombok:$lombokVersion")
     annotationProcessor("org.projectlombok:lombok:$lombokVersion")

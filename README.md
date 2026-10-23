@@ -111,6 +111,31 @@ Lombok is declared as `compileOnly` and both Lombok and MapStruct run only at co
 can see Lombok's generated builder/getters. Because no reflection or runtime processing is involved,
 these classes work in a native image without extra configuration.
 
+## Database (Hibernate ORM, PostgreSQL, Flyway)
+
+The app uses Hibernate ORM (plain JPA), the PostgreSQL JDBC driver, and Flyway for schema
+migrations. Start the database from `compose.yml` before running the app or the tests:
+
+```shell script
+docker compose up -d postgres
+```
+
+The datasource defaults match `compose.yml` and can be overridden with environment variables:
+
+| Variable | Default |
+| --- | --- |
+| `DB_URL` | `jdbc:postgresql://127.0.0.1:5432/simonjp` |
+| `DB_USERNAME` | `admin` |
+| `DB_PASSWORD` | `admin` |
+
+Flyway runs at startup and reads migrations from `src/main/resources/db/migration`
+(`V1__create_salam_table.sql` creates the `salam` table). Hibernate uses
+`schema-management.strategy=validate`, so a mapping that drifts from the migrated schema fails
+fast. Add new changes as versioned migrations instead of letting Hibernate create the schema.
+
+`domain/Salam` is mapped to the `salam` table, but the sample `SalamService` still keeps its data
+in memory, so the API behaves exactly as before.
+
 ## Creating a native executable
 
 You can create a native executable using:

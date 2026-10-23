@@ -8,3 +8,20 @@ quarkus:
     # Tetap tersedia juga di build production/native, bukan hanya dev mode.
     always-include: true
     path: /q/swagger-ui
+
+  datasource:
+    db-kind: postgresql
+    # Nilai default cocok dengan compose.yml; override lewat environment variable.
+    username: "${DB_USERNAME:admin}"
+    password: "${DB_PASSWORD:admin}"
+    jdbc:
+      url: "${DB_URL:jdbc:postgresql://127.0.0.1:5432/simonjp}"
+
+  hibernate-orm:
+    schema-management:
+      # Skema dikelola Flyway, jadi Hibernate hanya memvalidasi mapping terhadap skema.
+      strategy: validate
+
+  flyway:
+    migrate-at-start: true
+    locations: classpath:db/migration
