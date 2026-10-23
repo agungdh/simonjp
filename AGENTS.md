@@ -207,8 +207,14 @@ diprediksi.
 
 ## Pagination (cursor)
 
-Endpoint list yang datanya bisa besar memakai **cursor pagination**, bukan offset/page. Offset
-semakin lambat seiring halaman dan tidak cocok untuk infinite scroll.
+**Semua** endpoint list memakai **cursor pagination**, termasuk tabel master yang kecil. Tujuannya
+kontrak API yang seragam: satu bentuk request, satu bentuk response, satu kode client. Offset
+semakin lambat seiring halaman dan tidak cocok untuk infinite scroll, jadi tidak dipakai sebagai
+jalur utama di mana pun.
+
+Konsekuensi yang diterima: tidak ada nomor halaman dan tidak ada total count. Untuk tabel master,
+navigasi dilakukan lewat filter/pencarian, bukan `page=N`. `COUNT(*)` hanya ditambahkan kalau ada
+kebutuhan eksplisit, sebagai endpoint terpisah — jangan diselipkan ke response list.
 
 - Cursor yang diekspos ke client hanya `uuid` baris terakhir. Jangan pernah mengirim `id`, offset,
   atau nomor halaman di cursor.
@@ -234,8 +240,15 @@ semakin lambat seiring halaman dan tidak cocok untuk infinite scroll.
   satu baris secara deterministik (`ORDER BY id LIMIT 1`) atau tangani duplikat.
 - `sort` hanya menerima field yang di-whitelist; jangan interpolasi nama kolom dari request langsung
   ke JPQL/SQL. Jangan menjadikan `uuid` sebagai sort utama karena UUID v4 acak, bukan urutan waktu.
-- Jangan memakai offset untuk list utama. Offset hanya boleh untuk tabel kecil/admin atau kalau
-  memang diminta eksplisit.
+- Jangan memakai offset untuk endpoint list mana pun. Pengecualian hanya kalau diminta eksplisit dan
+  didokumentasikan, misalnya endpoint khusus yang butuh "lompat ke halaman N".
+- Tabel kecil tidak dikecualikan dari aturan ini, tetapi **tidak wajib punya index keyset**. Seq scan
+  pada tabel master beberapa halaman itu murah; query keyset tetap benar walau tanpa index.
+- `sort` boleh tidak didukung sama sekali pada tabel master (cukup default `ORDER BY id DESC`).
+  Itu tetap konsisten karena `sort` opsional di kontrak; jangan bikin parameter berbeda per resource.
+- Hindari sort pada kolom yang sering berubah (`updated_at`) untuk list panjang: baris bisa
+  terlewat atau dobel saat nilainya berubah di tengah pagination. Untuk tabel master, urutkan
+  berdasarkan kolom yang stabil.
 
 Bentuk response:
 
@@ -279,6 +292,12 @@ Index pendukung:
 - keyset default: PK `id`; kalau banyak baris soft-delete, partial index `(id) WHERE deleted_at IS NULL`;
 - sort lain: btree `(sort_col, id) WHERE deleted_at IS NULL`.
 
+Index di atas hanya ditambahkan pada tabel yang cukup besar. Tabel master kecil tetap memakai
+cursor pagination tanpa index keyset tambahan — jangan bikin index hanya karena "biar konsisten".
+Index `deleted_at` berdiri sendiri tidak membantu predicate `IS NULL` (nyaris semua baris cocok,
+planner memilih seq scan) dan hanya menambah biaya tulis. Untuk query data terhapus
+(purge/restore), pakai partial `(deleted_at) WHERE deleted_at IS NOT NULL`.
+
 ## Aturan
 
 1. **Skema dikelola Flyway, bukan Hibernate.** Hibernate memakai `schema-management.strategy=validate`.
@@ -308,7 +327,8 @@ Index pendukung:
     data aktif. Index unik baru harus partial (`WHERE deleted_at IS NULL`).
 11. **Kolom audit diisi server**, termasuk `created_by`/`updated_by`/`deleted_by` dari principal —
     jangan pernah menerimanya dari body request.
-12. **List endpoint memakai cursor pagination.** Cursor adalah `uuid` baris terakhir; jangan
-    memakai offset/page untuk list utama. Detail di bagian pagination di atas.
+12. **Semua list endpoint memakai cursor pagination**, termasuk tabel master kecil, supaya kontrak
+    API seragam. Cursor adalah `uuid` baris terakhir; offset/page tidak dipakai. Tabel kecil boleh
+    tidak punya index keyset, dan boleh tidak mendukung `sort`. Detail di bagian pagination di atas.
 13. **Kerja CPU-heavy (generate PDF/Excel, kompresi) tidak dijalankan di service ini.** Delegasikan
     ke service lain lewat HTTP client; virtual thread hanya untuk blocking I/O CRUD.
