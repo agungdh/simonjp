@@ -191,6 +191,81 @@ diprediksi.
 - Path lama (`/contoh/data`, `/hello`) tidak perlu di-rename hanya demi konvensi baru; terapkan
   aturan ini ke endpoint baru.
 
+## Pagination (cursor)
+
+Endpoint list yang datanya bisa besar memakai **cursor pagination**, bukan offset/page. Offset
+semakin lambat seiring halaman dan tidak cocok untuk infinite scroll.
+
+- Cursor yang diekspos ke client hanya `uuid` baris terakhir. Jangan pernah mengirim `id`, offset,
+  atau nomor halaman di cursor.
+- Query param: `cursor` (UUID, opsional), `limit` (default 20, maksimum 100), `sort`, dan `order`
+  (`asc`/`desc`).
+- Saat `cursor` ada, service:
+  1. load baris cursor berdasarkan `uuid` (lookup hash index);
+  2. kalau tidak ada atau sudah soft-delete, kembalikan `400` cursor tidak valid — bukan `404`;
+  3. pastikan baris cursor masih cocok dengan filter yang sama; kalau tidak, `400`;
+  4. pakai `id` (dan nilai kolom sort) baris itu sebagai posisi keyset;
+  5. query halaman berikutnya dengan filter + predicate keyset + `ORDER BY` yang sama.
+- Cursor hanya valid untuk kombinasi filter + sort yang sama. Kalau client mengubah filter/sort,
+  reset cursor (kirim request tanpa `cursor`).
+- Selalu tambahkan `id` sebagai tiebreaker unik di akhir `ORDER BY`, dan gunakan tuple comparison
+  untuk sort non-unik.
+- Ambil `limit + 1` baris untuk menentukan `hasMore`, lalu buang baris ekstra. `nextCursor` adalah
+  `uuid` baris terakhir yang benar-benar dikembalikan, atau `null` kalau tidak ada lagi.
+- Filter wajib diterapkan juga saat lookup cursor; jangan memakai posisi baris yang tidak terlihat
+  oleh filter saat ini.
+- Karena `uuid` tidak unique di database, lookup cursor jangan memakai `getSingleResult()`; ambil
+  satu baris secara deterministik (`ORDER BY id LIMIT 1`) atau tangani duplikat.
+- `sort` hanya menerima field yang di-whitelist; jangan interpolasi nama kolom dari request langsung
+  ke JPQL/SQL. Jangan menjadikan `uuid` sebagai sort utama karena UUID v4 acak, bukan urutan waktu.
+- Jangan memakai offset untuk list utama. Offset hanya boleh untuk tabel kecil/admin atau kalau
+  memang diminta eksplisit.
+
+Bentuk response:
+
+```json
+{
+  "items": [],
+  "nextCursor": "0f1e2d3c-...",
+  "hasMore": true
+}
+```
+
+DTO-nya bisa generik:
+
+```java
+public record CursorPageDTO<T>(List<T> items, UUID nextCursor, boolean hasMore) {
+}
+```
+
+Contoh keyset dengan default `ORDER BY id DESC`:
+
+```sql
+SELECT ...
+FROM order_item
+WHERE /* filter */
+  AND (:cursorId IS NULL OR id < :cursorId)
+ORDER BY id DESC
+LIMIT :limitPlusOne;
+-- deleted_at IS NULL sudah ditambahkan otomatis oleh @SQLRestriction
+```
+
+Untuk sort non-unik:
+
+```sql
+WHERE (sort_col, id) < (:cursorSort, :cursorId)
+ORDER BY sort_col DESC, id DESC
+```
+
+Index pendukung:
+
+- lookup cursor: hash index `uuid` yang sudah ada;
+- keyset default: PK `id`; kalau banyak baris soft-delete, partial index `(id) WHERE deleted_at IS NULL`;
+- sort lain: btree `(sort_col, id) WHERE deleted_at IS NULL`.
+
+Endpoint lama `/contoh/data` masih mengembalikan list biasa; endpoint list baru memakai wrapper
+`CursorPageDTO`.
+
 ## Aturan
 
 1. **Skema dikelola Flyway, bukan Hibernate.** Hibernate memakai `schema-management.strategy=validate`.
@@ -220,3 +295,5 @@ diprediksi.
     data aktif. Index unik baru harus partial (`WHERE deleted_at IS NULL`).
 12. **Kolom audit diisi server**, termasuk `created_by`/`updated_by`/`deleted_by` dari principal —
     jangan pernah menerimanya dari body request.
+13. **List endpoint memakai cursor pagination.** Cursor adalah `uuid` baris terakhir; jangan
+    memakai offset/page untuk list utama. Detail di bagian pagination di atas.
