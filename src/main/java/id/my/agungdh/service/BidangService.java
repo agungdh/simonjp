@@ -17,18 +17,14 @@ import id.my.agungdh.service.exception.NotFoundException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = @Inject)
 public class BidangService {
 
     private final BidangRepository bidangRepository;
     private final BidangMapper mapper;
-
-    @Inject
-    public BidangService(BidangRepository bidangRepository, BidangMapper mapper) {
-        this.bidangRepository = bidangRepository;
-        this.mapper = mapper;
-    }
 
     @Transactional
     public CursorPageDTO<BidangResponse> list(String search, UUID cursor, int limit) {

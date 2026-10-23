@@ -13,6 +13,7 @@ import id.my.agungdh.service.PangkatGolonganService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -31,14 +32,10 @@ import jakarta.ws.rs.core.Response;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Tag(name = "Pangkat Golongan", description = "Master pangkat dan golongan pegawai.")
+@RequiredArgsConstructor(onConstructor_ = @Inject)
 public class PangkatGolonganResource {
 
     private final PangkatGolonganService service;
-
-    @Inject
-    public PangkatGolonganResource(PangkatGolonganService service) {
-        this.service = service;
-    }
 
     @GET
     @Operation(summary = "List pangkat golongan dengan cursor pagination.")

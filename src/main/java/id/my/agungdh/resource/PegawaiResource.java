@@ -17,6 +17,7 @@ import id.my.agungdh.service.PegawaiService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -35,14 +36,10 @@ import jakarta.ws.rs.core.Response;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Tag(name = "Pegawai", description = "Data pegawai.")
+@RequiredArgsConstructor(onConstructor_ = @Inject)
 public class PegawaiResource {
 
     private final PegawaiService service;
-
-    @Inject
-    public PegawaiResource(PegawaiService service) {
-        this.service = service;
-    }
 
     @GET
     @Operation(summary = "List pegawai dengan cursor pagination dan filter.")

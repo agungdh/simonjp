@@ -26,26 +26,16 @@ import id.my.agungdh.service.exception.NotFoundException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = @Inject)
 public class PegawaiService {
 
     private final PegawaiRepository pegawaiRepository;
     private final BidangRepository bidangRepository;
     private final PangkatGolonganRepository pangkatGolonganRepository;
     private final PegawaiMapper mapper;
-
-    @Inject
-    public PegawaiService(
-            PegawaiRepository pegawaiRepository,
-            BidangRepository bidangRepository,
-            PangkatGolonganRepository pangkatGolonganRepository,
-            PegawaiMapper mapper) {
-        this.pegawaiRepository = pegawaiRepository;
-        this.bidangRepository = bidangRepository;
-        this.pangkatGolonganRepository = pangkatGolonganRepository;
-        this.mapper = mapper;
-    }
 
     @Transactional
     public CursorPageDTO<PegawaiResponse> list(

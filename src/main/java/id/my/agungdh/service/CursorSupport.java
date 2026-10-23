@@ -8,17 +8,18 @@ import id.my.agungdh.domain.BaseEntity;
 import id.my.agungdh.dto.CursorPageDTO;
 import id.my.agungdh.repository.QuerySupport;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
 /**
  * Aturan cursor pagination yang sama untuk semua resource: limit default 20, maksimum 100, dan
  * pengambilan {@code limit + 1} baris untuk menentukan {@code hasMore}.
  */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 final class CursorSupport {
 
     static final int DEFAULT_LIMIT = 20;
     static final int MAX_LIMIT = 100;
-
-    private CursorSupport() {
-    }
 
     static int normalizeLimit(int limit) {
         if (limit < 1) {

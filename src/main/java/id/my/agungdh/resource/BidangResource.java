@@ -13,6 +13,7 @@ import id.my.agungdh.service.BidangService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -31,14 +32,10 @@ import jakarta.ws.rs.core.Response;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Tag(name = "Bidang", description = "Master bidang.")
+@RequiredArgsConstructor(onConstructor_ = @Inject)
 public class BidangResource {
 
     private final BidangService service;
-
-    @Inject
-    public BidangResource(BidangService service) {
-        this.service = service;
-    }
 
     @GET
     @Operation(summary = "List bidang dengan cursor pagination.")

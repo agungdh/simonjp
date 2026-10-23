@@ -17,18 +17,14 @@ import id.my.agungdh.service.exception.NotFoundException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = @Inject)
 public class PangkatGolonganService {
 
     private final PangkatGolonganRepository pangkatGolonganRepository;
     private final PangkatGolonganMapper mapper;
-
-    @Inject
-    public PangkatGolonganService(PangkatGolonganRepository pangkatGolonganRepository, PangkatGolonganMapper mapper) {
-        this.pangkatGolonganRepository = pangkatGolonganRepository;
-        this.mapper = mapper;
-    }
 
     @Transactional
     public CursorPageDTO<PangkatGolonganResponse> list(String search, UUID cursor, int limit) {

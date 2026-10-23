@@ -2,12 +2,13 @@ package id.my.agungdh.repository;
 
 import java.util.Locale;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class QuerySupport {
 
     public static final char LIKE_ESCAPE = '\\';
-
-    private QuerySupport() {
-    }
 
     /** Bungkus pencarian menjadi pola LIKE yang aman dari wildcard input pengguna. */
     public static String likePattern(String search) {
