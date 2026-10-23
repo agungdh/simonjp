@@ -55,6 +55,28 @@ hanya mengenal `uuid`.
 **tidak** unique; jangan menambahkan constraint unik pada `uuid` kecuali ada kebutuhan eksplisit.
 Hash index hanya melayani pencarian equality (`WHERE uuid = ?`), bukan range atau `ORDER BY`.
 
+Semua kolom audit (`created_at`, `created_by`, `updated_at`, `updated_by`, `deleted_at`,
+`deleted_by`) bersifat internal dan **tidak pernah** masuk DTO, sama seperti `id`. Client cukup
+mengenal `uuid` dan field domain; kalau suatu saat timestamp memang dibutuhkan API, itu keputusan
+eksplisit yang harus didokumentasikan, bukan default.
+
+`BaseEntity` juga memasang filter global agar data terhapus tidak ikut ter-query:
+
+```java
+@MappedSuperclass
+@SQLRestriction("deleted_at IS NULL")
+public abstract class BaseEntity {
+    // id, uuid, dan kolom audit
+}
+```
+
+Hibernate 7 menerapkan `@SQLRestriction` dari `@MappedSuperclass` ke semua entity turunan dan
+meng-qualify kolom dengan alias tabel, jadi query Hibernate (termasuk join) otomatis menambahkan
+`deleted_at IS NULL`. Ini hanya berlaku untuk query Hibernate; native query wajib menulis predicate
+sendiri. `@SQLRestriction` selalu aktif dan tidak bisa di-parameterisasi; untuk kebutuhan
+admin/restore, pakai query khusus, jangan melepas filter global. Service yang menerima `uuid` data
+terhapus tetap harus memperlakukannya sebagai tidak ditemukan (404).
+
 ### DDL acuan
 
 ```sql
@@ -92,9 +114,10 @@ CREATE UNIQUE INDEX ux_contoh_nama_active ON contoh (nama) WHERE deleted_at IS N
    Service me-resolve `*_uuid` dari request menjadi entity sebelum menyimpan. Jangan menerima
    `*_id` dari client. Kolom `*_uuid` denormalisasi hanya boleh ditambahkan kalau ada alasan
    performa, dan wajib dijaga konsisten.
-3. **Soft delete, bukan hard delete.** Hapus = isi `deleted_at` + `deleted_by`. Semua query data
-   aktif wajib menambahkan `deleted_at IS NULL` (mis. `@SQLRestriction` di entity konkret atau
-   query repository terpusat). Jangan memakai `DELETE FROM` untuk data domain.
+3. **Soft delete, bukan hard delete.** Hapus = isi `deleted_at` + `deleted_by`. `BaseEntity` sudah
+   memasang `@SQLRestriction("deleted_at IS NULL")`, jadi query Hibernate otomatis menyaring data
+   aktif; native query wajib menambahkan predicate sendiri. Jangan memakai `DELETE FROM` untuk
+   data domain.
 4. **Unique = partial index.** Index unik selalu `WHERE deleted_at IS NULL` supaya nilai unik bisa
    dipakai ulang setelah data lama dihapus. Untuk unik case-insensitive, index ekspresi
    `lower(kolom)` dengan predicate yang sama.
@@ -102,7 +125,7 @@ CREATE UNIQUE INDEX ux_contoh_nama_active ON contoh (nama) WHERE deleted_at IS N
    atau `@PrePersist`/`@PreUpdate`), memakai `OffsetDateTime` (bukan `LocalDateTime`). Kolom
    `*_by` berasal dari principal yang sedang login, bukan body request. Selama auth belum ada,
    pakai `0L` untuk aksi sistem/seed dan siapkan abstraksi `CurrentUser` saat auth ditambahkan.
-   `*_by` tidak pernah diekspos ke client; timestamp hanya diekspos kalau memang dibutuhkan API.
+   Seluruh kolom audit (`*_at` dan `*_by`) tidak pernah diekspos ke client.
 6. **MapStruct mengabaikan kolom internal.** Saat memetakan request ke entity, `id`, `uuid`, dan
    semua kolom audit harus `ignore`; `uuid`/audit diisi service/listener. Entity turunan sebaiknya
    cukup `@Getter`/`@Setter` (bukan `@Data`) supaya `equals`/`hashCode` tidak memakai field mutable.
@@ -117,8 +140,9 @@ jangan menyalin polanya ke tabel baru.
    Perubahan skema harus berupa migrasi baru di `src/main/resources/db/migration`
    (`V2__...sql`), jangan mengubah migrasi yang sudah ada dan jangan mengandalkan auto-DDL.
 2. **Entity tidak boleh keluar dari REST layer.** Resource hanya mengembalikan DTO; field internal
-   seperti `catatanInternal`, `id`, semua `*_id`, dan kolom audit `*_by` sengaja tidak ada di DTO.
-   Identitas publik yang dipakai client adalah `uuid`/`*_uuid` (lihat bagian model data di atas).
+   seperti `catatanInternal`, `id`, semua `*_id`, dan seluruh kolom audit (`created_*`, `updated_*`,
+   `deleted_*`) sengaja tidak ada di DTO. Identitas publik yang dipakai client adalah
+   `uuid`/`*_uuid` (lihat bagian model data di atas).
 3. **`SalamService` masih in-memory** walaupun `Salam` sudah berupa entity JPA. Jangan berasumsi data
    sudah tersimpan ke database; kalau butuh persistensi, tambahkan repository/`EntityManager` secara
    eksplisit dan sesuaikan test.
@@ -134,7 +158,8 @@ jangan menyalin polanya ke tabel baru.
 9. Jangan commit `build/`, `.gradle/`, atau artefak hasil generate.
 10. **`id` internal, `uuid` publik.** Jangan mengekspos `id` atau `*_id` lewat DTO, query param,
     path, header, maupun pesan error; gunakan `uuid`/`*_uuid`.
-11. **Data domain tidak dihapus fisik.** Soft delete lewat `deleted_at`/`deleted_by`, dan index
-    unik baru harus partial (`WHERE deleted_at IS NULL`).
+11. **Data domain tidak dihapus fisik.** Soft delete lewat `deleted_at`/`deleted_by`; `BaseEntity`
+    memasang `@SQLRestriction("deleted_at IS NULL")` supaya query Hibernate otomatis hanya membaca
+    data aktif. Index unik baru harus partial (`WHERE deleted_at IS NULL`).
 12. **Kolom audit diisi server**, termasuk `created_by`/`updated_by`/`deleted_by` dari principal —
     jangan pernah menerimanya dari body request.
