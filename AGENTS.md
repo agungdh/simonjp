@@ -22,17 +22,36 @@ docker compose up -d postgres     # wajib sebelum test / dev
 
 `src/native-test` berisi integration test terpisah (`*IT`), dijalankan hanya pada build native.
 
-## Struktur
+## Struktur & arsitektur
+
+Layered architecture sederhana, dependensi satu arah:
+
+```text
+resource/ → service/ → repository/ → domain/
+```
 
 Semua kode produksi ada di `src/main/java/id/my/agungdh/`:
 
-| Paket | Isi |
-| --- | --- |
-| `domain/` | Entity JPA. Entity baru mewarisi `BaseEntity` (identitas + audit); `Salam` masih contoh lama. Mutable, memakai Lombok. |
-| `dto/` | `record` immutable yang diekspos REST layer (`SalamDTO`, `SalamRequest`, `HelloDTO`). |
-| `mapper/` | Interface MapStruct `SalamMapper` (`componentModel = "cdi"`). |
-| `service/` | `SalamService`, contoh penyimpanan in-memory. |
-| `resource/` | JAX-RS resource (`GreetingResource`, `DataResource`). |
+| Paket | Isi | Boleh bergantung pada |
+| --- | --- | --- |
+| `resource/` | JAX-RS resource (`GreetingResource`, `DataResource`), hanya HTTP + DTO | `service/`, `dto/` |
+| `service/` | Business logic, transaksi, resolve `*Uuid` ke entity | `repository/`, `domain/`, `dto/`, `mapper/` |
+| `repository/` | Akses DB (Hibernate/`EntityManager`), query | `domain/` |
+| `domain/` | Entity JPA. Entity baru mewarisi `BaseEntity` (identitas + audit); `Salam` masih contoh lama. Mutable, memakai Lombok. | tidak ada layer aplikasi lain |
+| `dto/` | `record` immutable request/response (`SalamDTO`, `SalamRequest`, `HelloDTO`), camelCase | tidak ada layer aplikasi lain |
+| `mapper/` | Interface MapStruct (`componentModel = "cdi"`) | `domain/`, `dto/` |
+
+Aturan layer:
+
+1. Resource hanya menangani HTTP, validasi input, dan DTO; jangan akses `EntityManager`/repository
+   langsung.
+2. Service memegang business logic dan batas transaksi (`@Transactional`); boleh bekerja dengan
+   entity, tetapi nilai yang keluar ke resource harus DTO.
+3. Repository hanya SQL/JPA dan mengembalikan entity, bukan DTO; jangan import `resource/` atau
+   `dto/`.
+4. Domain tidak boleh import `service/`, `repository/`, `resource/`, atau `dto/`.
+5. Jangan menambah port/adapter/use-case interface ala hexagonal/clean architecture; layered
+   sederhana ini sudah cukup kecuali ada kebutuhan nyata.
 
 ## Model data & konvensi database
 
@@ -104,15 +123,28 @@ CREATE INDEX idx_contoh_induk_id ON contoh (induk_id);
 CREATE UNIQUE INDEX ux_contoh_nama_active ON contoh (nama) WHERE deleted_at IS NULL;
 ```
 
+### Naming
+
+- **Tabel: singular**, snake_case: `salam`, `order_item`, `user_role`. Jangan memakai bentuk plural
+  (`users`, `order_items`); ini mengikuti nama entity dan tabel `salam` yang sudah ada.
+- Hindari nama tabel yang bentrok dengan reserved word SQL; pakai nama domain yang lebih spesifik
+  (`purchase_order`, bukan `order`).
+- **Kolom: snake_case**: `induk_id`, `nomor_telepon`, `created_at`.
+- **Entity: PascalCase singular** (`OrderItem`) dengan `@Table(name = "order_item")` eksplisit.
+- **DTO/JSON: camelCase** (`indukUuid`, `nomorTelepon`).
+- **Index/constraint**: `pk_<tabel>`, `fk_<tabel>_<kolom>`, `ux_<tabel>_<kolom>`, `idx_<tabel>_<kolom>`;
+  index unik yang hanya berlaku untuk data aktif memakai suffix `_active`.
+
 ### Aturan turunan
 
-1. **Jangan pernah membocorkan `id`.** DTO response memakai `uuid`, request memakai `*_uuid`, dan
-   path parameter memakai `uuid` (mis. `GET /contoh/data/{uuid}`). Field `id` dan semua kolom
-   `*_id` hanya untuk internal (entity, service, repository, SQL). Jangan mengandalkan
-   `@JsonIgnore`; bentuk DTO-nya yang harus tidak punya field tersebut.
+1. **Jangan pernah membocorkan `id`.** DTO response memakai `uuid`, request memakai `*Uuid` dalam
+   camelCase (mis. `indukUuid`), dan path parameter memakai `uuid` (mis.
+   `GET /contoh/data/{uuid}`). Field `id` dan semua kolom `*_id` hanya untuk internal (entity,
+   service, repository, SQL). Jangan mengandalkan `@JsonIgnore`; bentuk DTO-nya yang harus tidak
+   punya field tersebut.
 2. **FK tetap `*_id` di database.** Relasi JPA memakai `@ManyToOne` + `@JoinColumn(name = "..._id")`.
-   Service me-resolve `*_uuid` dari request menjadi entity sebelum menyimpan. Jangan menerima
-   `*_id` dari client. Kolom `*_uuid` denormalisasi hanya boleh ditambahkan kalau ada alasan
+   Service me-resolve `*Uuid` dari request menjadi entity sebelum menyimpan. Jangan menerima
+   `*_id` dari client. Kolom DB `*_uuid` denormalisasi hanya boleh ditambahkan kalau ada alasan
    performa, dan wajib dijaga konsisten.
 3. **Soft delete, bukan hard delete.** Hapus = isi `deleted_at` + `deleted_by`. `BaseEntity` sudah
    memasang `@SQLRestriction("deleted_at IS NULL")`, jadi query Hibernate otomatis menyaring data
@@ -134,6 +166,17 @@ CREATE UNIQUE INDEX ux_contoh_nama_active ON contoh (nama) WHERE deleted_at IS N
 dan bukan acuan entity baru. Kalau `Salam` disentuh, migrasikan bertahap lewat migrasi Flyway baru;
 jangan menyalin polanya ke tabel baru.
 
+## Konvensi DTO & JSON
+
+- Nama field DTO (record component) dan JSON memakai camelCase: `indukUuid`, `nomorTelepon`.
+- Nama tabel dan kolom database tetap snake_case: `order_item`, `induk_id`, `nomor_telepon`; jangan
+  mengubahnya menjadi camelCase. Tabel memakai bentuk singular (lihat bagian naming).
+- Jangan menambahkan `@JsonProperty`/`@JsonNaming` untuk memaksa snake_case. Biarkan Jackson
+  memakai nama record apa adanya.
+- Path/query parameter memakai camelCase untuk nama multi-kata; `uuid` tetap `uuid`.
+- MapStruct memetakan otomatis kalau nama field DTO dan entity sama; kalau beda, pakai
+  `@Mapping(source = "...", target = "...")`.
+
 ## Aturan
 
 1. **Skema dikelola Flyway, bukan Hibernate.** Hibernate memakai `schema-management.strategy=validate`.
@@ -142,7 +185,7 @@ jangan menyalin polanya ke tabel baru.
 2. **Entity tidak boleh keluar dari REST layer.** Resource hanya mengembalikan DTO; field internal
    seperti `catatanInternal`, `id`, semua `*_id`, dan seluruh kolom audit (`created_*`, `updated_*`,
    `deleted_*`) sengaja tidak ada di DTO. Identitas publik yang dipakai client adalah
-   `uuid`/`*_uuid` (lihat bagian model data di atas).
+   `uuid`/`*Uuid` (lihat bagian model data di atas).
 3. **`SalamService` masih in-memory** walaupun `Salam` sudah berupa entity JPA. Jangan berasumsi data
    sudah tersimpan ke database; kalau butuh persistensi, tambahkan repository/`EntityManager` secara
    eksplisit dan sesuaikan test.
@@ -157,7 +200,7 @@ jangan menyalin polanya ke tabel baru.
    jangan menyeragamkan yang sudah ada.
 9. Jangan commit `build/`, `.gradle/`, atau artefak hasil generate.
 10. **`id` internal, `uuid` publik.** Jangan mengekspos `id` atau `*_id` lewat DTO, query param,
-    path, header, maupun pesan error; gunakan `uuid`/`*_uuid`.
+    path, header, maupun pesan error; gunakan `uuid`/`*Uuid` (`*_uuid` hanya nama kolom database).
 11. **Data domain tidak dihapus fisik.** Soft delete lewat `deleted_at`/`deleted_by`; `BaseEntity`
     memasang `@SQLRestriction("deleted_at IS NULL")` supaya query Hibernate otomatis hanya membaca
     data aktif. Index unik baru harus partial (`WHERE deleted_at IS NULL`).
