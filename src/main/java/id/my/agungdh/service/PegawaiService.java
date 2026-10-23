@@ -76,7 +76,7 @@ public class PegawaiService {
         }
 
         var rows = pegawaiRepository.list(filter, cursorId, size + 1);
-        var page = CursorSupport.page(rows, size, Pegawai::getUuid);
+        var page = CursorSupport.page(rows, size);
 
         return new CursorPageDTO<>(
                 page.items().stream().map(mapper::toResponse).toList(),

@@ -3,8 +3,8 @@ package id.my.agungdh.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Function;
 
+import id.my.agungdh.domain.BaseEntity;
 import id.my.agungdh.dto.CursorPageDTO;
 import id.my.agungdh.repository.QuerySupport;
 
@@ -31,11 +31,11 @@ final class CursorSupport {
         return QuerySupport.trimToNull(search);
     }
 
-    /** Potong baris ekstra, lalu tentukan cursor halaman berikutnya. */
-    static <T> CursorPageDTO<T> page(List<T> rows, int limit, Function<T, UUID> uuidExtractor) {
+    /** Potong baris ekstra, lalu tentukan cursor halaman berikutnya dari {@code uuid} baris terakhir. */
+    static <T extends BaseEntity> CursorPageDTO<T> page(List<T> rows, int limit) {
         boolean hasMore = rows.size() > limit;
         List<T> items = hasMore ? new ArrayList<>(rows.subList(0, limit)) : rows;
-        UUID nextCursor = hasMore && !items.isEmpty() ? uuidExtractor.apply(items.get(items.size() - 1)) : null;
+        UUID nextCursor = hasMore && !items.isEmpty() ? items.getLast().getUuid() : null;
         return new CursorPageDTO<>(items, nextCursor, hasMore);
     }
 }

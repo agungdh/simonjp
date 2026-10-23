@@ -42,7 +42,7 @@ public class PangkatGolonganService {
         }
 
         var rows = pangkatGolonganRepository.list(normalizedSearch, cursorId, size + 1);
-        var page = CursorSupport.page(rows, size, PangkatGolongan::getUuid);
+        var page = CursorSupport.page(rows, size);
 
         return new CursorPageDTO<>(
                 page.items().stream().map(mapper::toResponse).toList(),

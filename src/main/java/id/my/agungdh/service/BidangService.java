@@ -42,7 +42,7 @@ public class BidangService {
         }
 
         var rows = bidangRepository.list(normalizedSearch, cursorId, size + 1);
-        var page = CursorSupport.page(rows, size, Bidang::getUuid);
+        var page = CursorSupport.page(rows, size);
 
         return new CursorPageDTO<>(
                 page.items().stream().map(mapper::toResponse).toList(),
