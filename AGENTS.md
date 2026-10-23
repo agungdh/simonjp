@@ -87,21 +87,24 @@ knows about `uuid`.
 | --- | --- | --- | --- |
 | `id` | `BIGINT GENERATED ALWAYS AS IDENTITY` | `Long` | Internal PK, `@GeneratedValue(strategy = IDENTITY)`, never included in DTOs |
 | `uuid` | `UUID` | `UUID` | Public v4 identity (`UUID.randomUUID()`), immutable, generated before insert |
-| `created_at` | `TIMESTAMPTZ` | `OffsetDateTime` | Set once on insert |
-| `created_by` | `BIGINT` | `Long` | Internal user id, never from the request |
-| `updated_at` | `TIMESTAMPTZ` | `OffsetDateTime` | Set on insert and on every update |
-| `updated_by` | `BIGINT` | `Long` | Internal user id, never from the request |
-| `deleted_at` | `TIMESTAMPTZ` | `OffsetDateTime` | `NULL` = active, set = soft deleted |
-| `deleted_by` | `BIGINT` | `Long` | Id of the user who deleted the row |
+| `created_at` | `TIMESTAMPTZ` | `OffsetDateTime` | Nullable. Set once on insert; `NULL` for imported rows with unknown origin |
+| `created_by` | `BIGINT` | `Long` | Nullable. Internal user id, never from the request; `NULL` when unknown |
+| `updated_at` | `TIMESTAMPTZ` | `OffsetDateTime` | Nullable. Set on insert and on every update; `NULL` when unknown |
+| `updated_by` | `BIGINT` | `Long` | Nullable. Internal user id, never from the request; `NULL` when unknown |
+| `deleted_at` | `TIMESTAMPTZ` | `OffsetDateTime` | Nullable. `NULL` = active, set = soft deleted |
+| `deleted_by` | `BIGINT` | `Long` | Nullable. Id of the user who deleted the row, `NULL` when unknown |
 
 `id` is guaranteed unique by the database; `uuid` is only unique in practice. The `uuid` index uses
 hash and is **not** unique; do not add a unique constraint on `uuid` unless there is an explicit
 need. A hash index only serves equality lookups (`WHERE uuid = ?`), not ranges or `ORDER BY`.
 
 All audit columns (`created_at`, `created_by`, `updated_at`, `updated_by`, `deleted_at`,
-`deleted_by`) are internal and **never** appear in DTOs, just like `id`. Clients only need to know
-`uuid` and domain fields; if timestamps are ever required by the API, that is an explicit decision
-that must be documented, not the default.
+`deleted_by`) are internal and **never** appear in DTOs, just like `id`. They are also optional and
+informational: they exist only for tracing when inspecting the database directly, so rows imported
+from legacy applications may leave any of them `NULL`, and no business logic may depend on them.
+The only exception is the soft-delete filter, which uses `deleted_at`; `NULL` there means active.
+Clients only need to know `uuid` and domain fields; if timestamps are ever required by the API, that
+is an explicit decision that must be documented, not the default.
 
 `BaseEntity` also installs a global filter so deleted rows are not queried:
 
@@ -129,10 +132,11 @@ CREATE TABLE contoh (
     nama        VARCHAR(255) NOT NULL,
     induk_id    BIGINT REFERENCES contoh(id),
 
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by  BIGINT NOT NULL,
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_by  BIGINT NOT NULL,
+    -- Audit is optional/informational; no NOT NULL and no defaults, so NULL means "unknown".
+    created_at  TIMESTAMPTZ,
+    created_by  BIGINT,
+    updated_at  TIMESTAMPTZ,
+    updated_by  BIGINT,
     deleted_at  TIMESTAMPTZ,
     deleted_by  BIGINT
 );
@@ -176,11 +180,14 @@ CREATE UNIQUE INDEX ux_contoh_nama_active ON contoh (nama) WHERE deleted_at IS N
 4. **Unique = partial index.** Unique indexes always use `WHERE deleted_at IS NULL` so a unique
    value can be reused after the old row is deleted. For case-insensitive uniqueness, use an
    expression index on `lower(column)` with the same predicate.
-5. **Audit is filled by the server.** `created_*`/`updated_*`/`deleted_*` are filled in one place
-   (an audit listener or `@PrePersist`/`@PreUpdate`) using `OffsetDateTime` (not `LocalDateTime`).
-   The `*_by` columns come from the logged-in principal, never from the request body. While auth is
-   not in place, use `0L` for system/seed actions and prepare a `CurrentUser` abstraction when auth
-   is added. All audit columns (`*_at` and `*_by`) are never exposed to clients.
+5. **Audit is filled by the server when known.** `created_*`/`updated_*`/`deleted_*` are filled in
+   one place (an audit listener or `@PrePersist`/`@PreUpdate`) using `OffsetDateTime` (not
+   `LocalDateTime`). The `*_by` columns come from the logged-in principal, never from the request
+   body. While auth is not in place, use `0L` for system/seed actions and prepare a `CurrentUser`
+   abstraction when auth is added. All audit columns are nullable because data imported from legacy
+   applications may not carry this metadata: `NULL` means "unknown", never invent a value, and do
+   not make behavior depend on audit values (except `deleted_at` for the soft-delete filter). All
+   audit columns (`*_at` and `*_by`) are never exposed to clients.
 6. **MapStruct ignores internal columns.** When mapping request → entity, `id`, `uuid`, and all
    audit columns must be `ignore`d; `uuid`/audit are filled by the service/listener. Subclass
    entities should use `@Getter`/`@Setter` (not `@Data`) so `equals`/`hashCode` do not depend on
@@ -334,8 +341,10 @@ partial index `(deleted_at) WHERE deleted_at IS NOT NULL`.
 10. **Domain data is never physically deleted.** Soft delete via `deleted_at`/`deleted_by`;
     `BaseEntity` installs `@SQLRestriction("deleted_at IS NULL")` so Hibernate queries read only
     active data. New unique indexes must be partial (`WHERE deleted_at IS NULL`).
-11. **Audit columns are filled by the server**, including `created_by`/`updated_by`/`deleted_by`
-    from the principal — never accept them from the request body.
+11. **Audit columns are filled by the server when known**, including
+    `created_by`/`updated_by`/`deleted_by` from the principal — never accept them from the request
+    body. They are nullable and informational: leave them `NULL` instead of inventing values for
+    imported legacy data.
 12. **Every list endpoint uses cursor pagination**, including small master tables, so the API
     contract stays uniform. The cursor is the `uuid` of the last row; offsets/pages are not used.
     Small tables may skip keyset indexes and may not support `sort`. Details in the pagination

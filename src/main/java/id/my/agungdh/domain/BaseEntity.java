@@ -17,6 +17,9 @@ import lombok.Setter;
 /**
  * Basis semua entity: identitas internal ({@code id}), identitas publik ({@code uuid}), dan audit.
  * {@code @SQLRestriction} membuat query Hibernate otomatis menyaring baris yang sudah soft delete.
+ *
+ * <p>Kolom audit bersifat opsional dan informasional: hanya untuk penelusuran saat melihat langsung
+ * ke database. Baris hasil impor dari aplikasi lama boleh tidak punya nilai audit sama sekali.
  */
 @Getter
 @Setter
@@ -33,16 +36,16 @@ public abstract class BaseEntity {
     @Column(name = "uuid", nullable = false, updatable = false)
     private UUID uuid;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
 
-    @Column(name = "created_by", nullable = false, updatable = false)
+    @Column(name = "created_by", updatable = false)
     private Long createdBy;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
 
-    @Column(name = "updated_by", nullable = false)
+    @Column(name = "updated_by")
     private Long updatedBy;
 
     @Column(name = "deleted_at")
