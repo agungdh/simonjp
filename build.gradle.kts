@@ -21,6 +21,7 @@ dependencies {
     implementation("io.quarkus:quarkus-rest-jackson")
     implementation("io.quarkus:quarkus-arc")
     implementation("io.quarkus:quarkus-config-yaml")
+    implementation("io.quarkus:quarkus-redis-client")
     implementation("io.quarkus:quarkus-hibernate-validator")
     implementation("io.quarkus:quarkus-smallrye-openapi")
     implementation("io.quarkus:quarkus-swagger-ui")
@@ -40,6 +41,9 @@ dependencies {
     // Urutan penting: Lombok dulu, lalu binding, baru MapStruct.
     annotationProcessor("org.projectlombok:lombok-mapstruct-binding:$lombokMapstructBindingVersion")
     annotationProcessor("org.mapstruct:mapstruct-processor:$mapstructVersion")
+
+    // Password hashing (BCrypt) untuk auth.
+    implementation("org.mindrot:jbcrypt:0.4")
 
     testImplementation("io.quarkus:quarkus-junit")
     testImplementation("io.rest-assured:rest-assured")
