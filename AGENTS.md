@@ -173,9 +173,23 @@ jangan menyalin polanya ke tabel baru.
   mengubahnya menjadi camelCase. Tabel memakai bentuk singular (lihat bagian naming).
 - Jangan menambahkan `@JsonProperty`/`@JsonNaming` untuk memaksa snake_case. Biarkan Jackson
   memakai nama record apa adanya.
-- Path/query parameter memakai camelCase untuk nama multi-kata; `uuid` tetap `uuid`.
+- Query parameter multi-kata memakai camelCase (`pageSize`, `sortBy`); path parameter identitas
+  tetap `uuid`.
 - MapStruct memetakan otomatis kalau nama field DTO dan entity sama; kalau beda, pakai
   `@Mapping(source = "...", target = "...")`.
+
+## Konvensi REST
+
+REST tidak mewajibkan bentuk plural; itu hanya konvensi gaya. Yang penting konsisten dan mudah
+diprediksi.
+
+- Path resource memakai **singular** dan kebab-case: `/order-item`, `/order-item/{uuid}`. Jangan
+  mencampur singular dan plural.
+- Aksi ditentukan HTTP method, bukan verb di path: `GET /order-item`, `POST /order-item`,
+  `GET /order-item/{uuid}`, `PATCH /order-item/{uuid}`, `DELETE /order-item/{uuid}`.
+- Path parameter untuk identitas selalu `uuid`, bukan `id`.
+- Path lama (`/contoh/data`, `/hello`) tidak perlu di-rename hanya demi konvensi baru; terapkan
+  aturan ini ke endpoint baru.
 
 ## Aturan
 
