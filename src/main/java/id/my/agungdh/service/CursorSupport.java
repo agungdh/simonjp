@@ -35,8 +35,15 @@ final class CursorSupport {
     static <T extends BaseEntity> CursorPageDTO<T> page(List<T> rows, int limit) {
         boolean hasMore = rows.size() > limit;
         List<T> items = hasMore ? new ArrayList<>(rows.subList(0, limit)) : rows;
-        T last = items.isEmpty() ? null : items.getLast();
-        UUID nextCursor = hasMore && last != null ? last.getUuid() : null;
+
+        UUID nextCursor = null;
+        if (hasMore && !items.isEmpty()) {
+            T last = items.getLast();
+            if (last != null) {
+                nextCursor = last.getUuid();
+            }
+        }
+
         return new CursorPageDTO<>(items, nextCursor, hasMore);
     }
 }
