@@ -1,7 +1,7 @@
 # simonjp
 
-REST API built with Quarkus. Modul yang sudah tersedia: master **bidang**, master
-**pangkat golongan**, dan **pegawai** (CRUD penuh, belum termasuk user/auth).
+REST API built with Quarkus. Available modules: **bidang** master data,
+**pangkat golongan** master data, and **pegawai** (full CRUD, no user/auth yet).
 
 ## Stack
 
@@ -36,8 +36,8 @@ The datasource defaults match `compose.yml` and can be overridden with environme
 | `DB_USERNAME` | `admin` |
 | `DB_PASSWORD` | `admin` |
 
-Flyway reads migrations from `src/main/resources/db/migration`. `V1` membuat tabel `bidang`,
-`pangkat_golongan`, dan `pegawai`; `V2` mengisi seed bidang dan pangkat golongan.
+Flyway reads migrations from `src/main/resources/db/migration`. `V1` creates the `bidang`,
+`pangkat_golongan`, and `pegawai` tables; `V2` seeds bidang and pangkat golongan.
 Hibernate uses `schema-management.strategy=validate`, so the mapping must match the migrated
 schema. Add schema changes as versioned migrations (`V1__...sql`, `V2__...sql`, ...); never let
 Hibernate create or update the schema.
@@ -51,25 +51,24 @@ The OpenAPI document is generated from JAX-RS and MicroProfile OpenAPI annotatio
 | <http://localhost:8080/q/swagger-ui> | Interactive Swagger UI |
 | <http://localhost:8080/q/openapi> | OpenAPI document (YAML; `?format=json` for JSON) |
 
-Semua endpoint list memakai cursor pagination (`cursor`, `limit`), dan identitas publik memakai
-`uuid`.
+Every list endpoint uses cursor pagination (`cursor`, `limit`), and public identities use `uuid`.
 
-| Method | Path | Keterangan |
+| Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/bidang` | List bidang, filter `search` |
-| `POST` | `/bidang` | Buat bidang |
-| `GET` | `/bidang/{uuid}` | Detail bidang |
-| `PUT` | `/bidang/{uuid}` | Ganti seluruh data bidang |
+| `GET` | `/bidang` | List bidang, `search` filter |
+| `POST` | `/bidang` | Create bidang |
+| `GET` | `/bidang/{uuid}` | Bidang detail |
+| `PUT` | `/bidang/{uuid}` | Replace all bidang data |
 | `DELETE` | `/bidang/{uuid}` | Soft delete bidang |
-| `GET` | `/pangkat-golongan` | List pangkat golongan, filter `search` |
-| `POST` | `/pangkat-golongan` | Buat pangkat golongan |
-| `GET` | `/pangkat-golongan/{uuid}` | Detail pangkat golongan |
-| `PUT` | `/pangkat-golongan/{uuid}` | Ganti seluruh data pangkat golongan |
+| `GET` | `/pangkat-golongan` | List pangkat golongan, `search` filter |
+| `POST` | `/pangkat-golongan` | Create pangkat golongan |
+| `GET` | `/pangkat-golongan/{uuid}` | Pangkat golongan detail |
+| `PUT` | `/pangkat-golongan/{uuid}` | Replace all pangkat golongan data |
 | `DELETE` | `/pangkat-golongan/{uuid}` | Soft delete pangkat golongan |
-| `GET` | `/pegawai` | List pegawai, filter `search`, `tipe`, `status`, `bidangUuid`, `pangkatGolonganUuid`, `kategoriJabatan`, `kategoriKebutuhanJamPelatihan` |
-| `POST` | `/pegawai` | Buat pegawai |
-| `GET` | `/pegawai/{uuid}` | Detail pegawai |
-| `PUT` | `/pegawai/{uuid}` | Ganti seluruh data pegawai |
+| `GET` | `/pegawai` | List pegawai, filters `search`, `tipe`, `status`, `bidangUuid`, `pangkatGolonganUuid`, `kategoriJabatan`, `kategoriKebutuhanJamPelatihan` |
+| `POST` | `/pegawai` | Create pegawai |
+| `GET` | `/pegawai/{uuid}` | Pegawai detail |
+| `PUT` | `/pegawai/{uuid}` | Replace all pegawai data |
 | `DELETE` | `/pegawai/{uuid}` | Soft delete pegawai |
 
 ## Build

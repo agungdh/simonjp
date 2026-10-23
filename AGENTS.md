@@ -1,122 +1,126 @@
 # AGENTS.md
 
-Instruksi kerja untuk coding agent. `README.md` adalah dokumentasi untuk manusia; file ini fokus
-pada hal yang dibutuhkan saat mengubah kode.
+Working instructions for coding agents. `README.md` is the documentation for humans; this file
+focuses on what you need when changing code.
+
+> **Documentation language:** `README.md` and `AGENTS.md` must always be written in English. Code
+> comments and endpoint naming may follow the mixed Indonesian–English style already present in
+> the surrounding files.
 
 ## Stack
 
-- Quarkus 3.40.1.1 (BOM di `gradle.properties`), Java 25, Gradle Kotlin DSL (`build.gradle.kts`).
+- Quarkus 3.40.1.1 (BOM in `gradle.properties`), Java 25, Gradle Kotlin DSL (`build.gradle.kts`).
 - REST: `quarkus-rest` + `quarkus-rest-jackson`; OpenAPI: `quarkus-smallrye-openapi` + `quarkus-swagger-ui`.
-- Persistensi: Hibernate ORM (JPA), PostgreSQL, Flyway.
-- Lombok (`compileOnly`) + MapStruct, semuanya CDI bean.
-- Virtual threads: semua REST resource blocking memakai `@RunOnVirtualThread` di level class.
+- Persistence: Hibernate ORM (JPA), PostgreSQL, Flyway.
+- Lombok (`compileOnly`) + MapStruct, all CDI beans.
+- Virtual threads: every blocking REST resource uses `@RunOnVirtualThread` at class level.
 
-## Perintah
+## Commands
 
 ```shell
-docker compose up -d postgres     # wajib sebelum test / dev
+docker compose up -d postgres     # required before tests / dev
 ./gradlew quarkusDev              # dev mode, http://localhost:8080
-./gradlew test                    # butuh Postgres hidup
+./gradlew test                    # requires a running Postgres
 ./gradlew build                   # build + test
 ./gradlew build -Dquarkus.native.enabled=true   # native (GraalVM)
 ```
 
-`src/native-test` berisi integration test terpisah (`*IT`), dijalankan hanya pada build native.
+`src/native-test` holds separate integration tests (`*IT`), run only during native builds.
 
-## Struktur & arsitektur
+## Structure & architecture
 
-Layered architecture sederhana, dependensi satu arah:
+A simple layered architecture with one-way dependencies:
 
 ```text
 resource/ → service/ → repository/ → domain/
 ```
 
-Semua kode produksi ada di `src/main/java/id/my/agungdh/`:
+All production code lives in `src/main/java/id/my/agungdh/`:
 
-| Paket | Isi | Boleh bergantung pada |
+| Package | Contents | May depend on |
 | --- | --- | --- |
-| `resource/` | JAX-RS resource, hanya HTTP + DTO | `service/`, `dto/` |
-| `service/` | Business logic, transaksi, resolve `*Uuid` ke entity | `repository/`, `domain/`, `dto/`, `mapper/` |
-| `repository/` | Akses DB (Hibernate/`EntityManager`), query | `domain/` |
-| `domain/` | Entity JPA. Entity baru mewarisi `BaseEntity` (identitas + audit). Mutable, memakai Lombok. | tidak ada layer aplikasi lain |
-| `dto/` | `record` immutable request/response, camelCase | tidak ada layer aplikasi lain |
-| `mapper/` | Interface MapStruct (`componentModel = "cdi"`) | `domain/`, `dto/` |
+| `resource/` | JAX-RS resources, HTTP + DTO only | `service/`, `dto/` |
+| `service/` | Business logic, transactions, resolving `*Uuid` to entities | `repository/`, `domain/`, `dto/`, `mapper/` |
+| `repository/` | Database access (Hibernate/`EntityManager`), queries | `domain/` |
+| `domain/` | JPA entities. New entities extend `BaseEntity` (identity + audit). Mutable, uses Lombok. | no other application layer |
+| `dto/` | Immutable `record` request/response types, camelCase | no other application layer |
+| `mapper/` | MapStruct interfaces (`componentModel = "cdi"`) | `domain/`, `dto/` |
 
-Aturan layer:
+Layer rules:
 
-1. Resource hanya menangani HTTP, validasi input, dan DTO; jangan akses `EntityManager`/repository
-   langsung.
-2. Service memegang business logic dan batas transaksi (`@Transactional`); boleh bekerja dengan
-   entity, tetapi nilai yang keluar ke resource harus DTO.
-3. Repository hanya SQL/JPA dan mengembalikan entity, bukan DTO; jangan import `resource/` atau
+1. Resources only handle HTTP, input validation, and DTOs; never access `EntityManager` or
+   repositories directly.
+2. Services own business logic and transaction boundaries (`@Transactional`); they may work with
+   entities, but anything returned to a resource must be a DTO.
+3. Repositories contain SQL/JPA only and return entities, not DTOs; never import `resource/` or
    `dto/`.
-4. Domain tidak boleh import `service/`, `repository/`, `resource/`, atau `dto/`.
-5. Jangan menambah port/adapter/use-case interface ala hexagonal/clean architecture; layered
-   sederhana ini sudah cukup kecuali ada kebutuhan nyata.
+4. Domain must not import `service/`, `repository/`, `resource/`, or `dto/`.
+5. Do not add hexagonal/clean-architecture ports, adapters, or use-case interfaces; this simple
+   layering is enough unless there is a real need.
 
 ## Virtual threads, Java 25 & mapping
 
-- **Semua REST resource memakai virtual threads.** Pasang `@RunOnVirtualThread` di level class,
-  bukan per method, supaya konsisten. Endpoint harus blocking dan mengembalikan DTO/`Response`,
-  bukan `Uni`/`Multi`.
-- **Virtual thread cocok untuk CRUD** karena beban utamanya blocking I/O (JDBC, Hibernate, HTTP
-  client). Ini bukan percepatan CPU: jangan menjalankan generate PDF/Excel, kompresi, atau
-  perhitungan berat di service ini. Delegasikan ke service lain lewat HTTP client; panggilan I/O-nya
-  tetap aman di virtual thread.
-- Virtual thread tidak menambah kapasitas database; tetap atur ukuran connection pool.
-- `@Transactional` tetap di layer service, bukan resource.
-- **DTO selalu `record` immutable**, termasuk request, response, dan wrapper pagination. Jangan
-  memakai Lombok/`@Data` di DTO. Field camelCase dan beri `@Schema` untuk OpenAPI.
-- **Konversi entity ↔ DTO hanya lewat MapStruct** di `mapper/` (`componentModel = "cdi"`). Resource
-  tidak boleh mapping manual; service memakai mapper. Saat request → entity, `id`, `uuid`, dan kolom
-  audit wajib `ignore`; `uuid`/audit diisi service/listener.
-- **Java 25 adalah target.** Jangan menurunkan `sourceCompatibility`/`targetCompatibility`; gunakan
-  `record`, pattern matching, dan fitur Java 25 lain yang stabil.
+- **Every REST resource uses virtual threads.** Put `@RunOnVirtualThread` at class level, not per
+  method, for consistency. Endpoints must be blocking and return DTOs/`Response`, not
+  `Uni`/`Multi`.
+- **Virtual threads suit CRUD** because the workload is mostly blocking I/O (JDBC, Hibernate, HTTP
+  clients). This is not a CPU speedup: do not run PDF/Excel generation, compression, or heavy
+  computation in this service. Delegate it to another service over an HTTP client; the I/O call
+  remains safe on a virtual thread.
+- Virtual threads do not add database capacity; still size the connection pool.
+- `@Transactional` stays in the service layer, never in resources.
+- **DTOs are always immutable `record`s**, including requests, responses, and pagination wrappers.
+  Do not use Lombok/`@Data` in DTOs. Fields are camelCase and annotated with `@Schema` for OpenAPI.
+- **Entity ↔ DTO conversion goes through MapStruct only**, in `mapper/` (`componentModel = "cdi"`).
+  Resources must not map manually; services use the mappers. When mapping request → entity, `id`,
+  `uuid`, and audit columns must be `ignore`d; `uuid`/audit are filled by the service/listener.
+- **Java 25 is the target.** Do not lower `sourceCompatibility`/`targetCompatibility`; use `record`,
+  pattern matching, and other stable Java 25 features.
 
-## Model data & konvensi database
+## Data model & database conventions
 
-Entity baru memakai satu basis: `domain/BaseEntity` (`@MappedSuperclass`) yang menyimpan identitas
-dan audit. Tujuannya: `id` bigint tetap menjadi PK internal yang cepat untuk join, sementara API
-hanya mengenal `uuid`.
+New entities share one base: `domain/BaseEntity` (`@MappedSuperclass`), which holds identity and
+audit fields. The goal: the `id` bigint stays as a fast internal PK for joins, while the API only
+knows about `uuid`.
 
-| Kolom | Tipe PostgreSQL | Java | Aturan |
+| Column | PostgreSQL type | Java | Rule |
 | --- | --- | --- | --- |
-| `id` | `BIGINT GENERATED ALWAYS AS IDENTITY` | `Long` | PK internal, `@GeneratedValue(strategy = IDENTITY)`, tidak pernah masuk DTO |
-| `uuid` | `UUID` | `UUID` | identitas publik v4 (`UUID.randomUUID()`), immutable, di-generate sebelum insert |
-| `created_at` | `TIMESTAMPTZ` | `OffsetDateTime` | diisi sekali saat insert |
-| `created_by` | `BIGINT` | `Long` | id user internal, bukan dari request |
-| `updated_at` | `TIMESTAMPTZ` | `OffsetDateTime` | diisi saat insert dan setiap update |
-| `updated_by` | `BIGINT` | `Long` | id user internal, bukan dari request |
-| `deleted_at` | `TIMESTAMPTZ` | `OffsetDateTime` | `NULL` = aktif, terisi = soft delete |
-| `deleted_by` | `BIGINT` | `Long` | id user yang menghapus |
+| `id` | `BIGINT GENERATED ALWAYS AS IDENTITY` | `Long` | Internal PK, `@GeneratedValue(strategy = IDENTITY)`, never included in DTOs |
+| `uuid` | `UUID` | `UUID` | Public v4 identity (`UUID.randomUUID()`), immutable, generated before insert |
+| `created_at` | `TIMESTAMPTZ` | `OffsetDateTime` | Set once on insert |
+| `created_by` | `BIGINT` | `Long` | Internal user id, never from the request |
+| `updated_at` | `TIMESTAMPTZ` | `OffsetDateTime` | Set on insert and on every update |
+| `updated_by` | `BIGINT` | `Long` | Internal user id, never from the request |
+| `deleted_at` | `TIMESTAMPTZ` | `OffsetDateTime` | `NULL` = active, set = soft deleted |
+| `deleted_by` | `BIGINT` | `Long` | Id of the user who deleted the row |
 
-`id` dijamin unik oleh database; `uuid` hanya unik secara praktik. Index `uuid` memakai hash dan
-**tidak** unique; jangan menambahkan constraint unik pada `uuid` kecuali ada kebutuhan eksplisit.
-Hash index hanya melayani pencarian equality (`WHERE uuid = ?`), bukan range atau `ORDER BY`.
+`id` is guaranteed unique by the database; `uuid` is only unique in practice. The `uuid` index uses
+hash and is **not** unique; do not add a unique constraint on `uuid` unless there is an explicit
+need. A hash index only serves equality lookups (`WHERE uuid = ?`), not ranges or `ORDER BY`.
 
-Semua kolom audit (`created_at`, `created_by`, `updated_at`, `updated_by`, `deleted_at`,
-`deleted_by`) bersifat internal dan **tidak pernah** masuk DTO, sama seperti `id`. Client cukup
-mengenal `uuid` dan field domain; kalau suatu saat timestamp memang dibutuhkan API, itu keputusan
-eksplisit yang harus didokumentasikan, bukan default.
+All audit columns (`created_at`, `created_by`, `updated_at`, `updated_by`, `deleted_at`,
+`deleted_by`) are internal and **never** appear in DTOs, just like `id`. Clients only need to know
+`uuid` and domain fields; if timestamps are ever required by the API, that is an explicit decision
+that must be documented, not the default.
 
-`BaseEntity` juga memasang filter global agar data terhapus tidak ikut ter-query:
+`BaseEntity` also installs a global filter so deleted rows are not queried:
 
 ```java
 @MappedSuperclass
 @SQLRestriction("deleted_at IS NULL")
 public abstract class BaseEntity {
-    // id, uuid, dan kolom audit
+    // id, uuid, and audit columns
 }
 ```
 
-Hibernate 7 menerapkan `@SQLRestriction` dari `@MappedSuperclass` ke semua entity turunan dan
-meng-qualify kolom dengan alias tabel, jadi query Hibernate (termasuk join) otomatis menambahkan
-`deleted_at IS NULL`. Ini hanya berlaku untuk query Hibernate; native query wajib menulis predicate
-sendiri. `@SQLRestriction` selalu aktif dan tidak bisa di-parameterisasi; untuk kebutuhan
-admin/restore, pakai query khusus, jangan melepas filter global. Service yang menerima `uuid` data
-terhapus tetap harus memperlakukannya sebagai tidak ditemukan (404).
+Hibernate 7 applies `@SQLRestriction` from a `@MappedSuperclass` to every subclass and qualifies
+columns with the table alias, so Hibernate queries (including joins) automatically add
+`deleted_at IS NULL`. This only applies to Hibernate queries; native queries must write the
+predicate themselves. `@SQLRestriction` is always active and cannot be parameterized; for
+admin/restore needs, use a dedicated query instead of removing the global filter. A service that
+receives the `uuid` of a deleted row must still treat it as not found (404).
 
-### DDL acuan
+### Reference DDL
 
 ```sql
 CREATE TABLE contoh (
@@ -133,127 +137,127 @@ CREATE TABLE contoh (
     deleted_by  BIGINT
 );
 
--- Pencarian publik: equality-only, tanpa unique.
+-- Public lookup: equality only, no unique.
 CREATE INDEX idx_contoh_uuid ON contoh USING hash (uuid);
 
--- FK tidak otomatis di-index PostgreSQL.
+-- PostgreSQL does not index FKs automatically.
 CREATE INDEX idx_contoh_induk_id ON contoh (induk_id);
 
--- Unik hanya untuk baris aktif, jadi nilai boleh dipakai lagi setelah soft delete.
+-- Unique only for active rows, so values can be reused after a soft delete.
 CREATE UNIQUE INDEX ux_contoh_nama_active ON contoh (nama) WHERE deleted_at IS NULL;
 ```
 
 ### Naming
 
-- **Tabel: singular**, snake_case: `order_item`, `user_role`. Jangan memakai bentuk plural
-  (`users`, `order_items`); nama tabel mengikuti nama entity.
-- Hindari nama tabel yang bentrok dengan reserved word SQL; pakai nama domain yang lebih spesifik
-  (`purchase_order`, bukan `order`).
-- **Kolom: snake_case**: `induk_id`, `nomor_telepon`, `created_at`.
-- **Entity: PascalCase singular** (`OrderItem`) dengan `@Table(name = "order_item")` eksplisit.
-- **DTO/JSON: camelCase** (`indukUuid`, `nomorTelepon`).
-- **Index/constraint**: `pk_<tabel>`, `fk_<tabel>_<kolom>`, `ux_<tabel>_<kolom>`, `idx_<tabel>_<kolom>`;
-  index unik yang hanya berlaku untuk data aktif memakai suffix `_active`.
+- **Tables: singular**, snake_case: `order_item`, `user_role`. Do not use plural forms (`users`,
+  `order_items`); table names follow the entity name.
+- Avoid table names that clash with SQL reserved words; use a more specific domain name
+  (`purchase_order`, not `order`).
+- **Columns: snake_case**: `induk_id`, `nomor_telepon`, `created_at`.
+- **Entities: PascalCase singular** (`OrderItem`) with an explicit `@Table(name = "order_item")`.
+- **DTOs/JSON: camelCase** (`indukUuid`, `nomorTelepon`).
+- **Indexes/constraints**: `pk_<table>`, `fk_<table>_<column>`, `ux_<table>_<column>`,
+  `idx_<table>_<column>`; unique indexes that only apply to active rows use the `_active` suffix.
 
-### Aturan turunan
+### Derived rules
 
-1. **Jangan pernah membocorkan `id`.** DTO response memakai `uuid`, request memakai `*Uuid` dalam
-   camelCase (mis. `indukUuid`), dan path parameter memakai `uuid` (mis.
-   `GET /order-item/{uuid}`). Field `id` dan semua kolom `*_id` hanya untuk internal (entity,
-   service, repository, SQL). Jangan mengandalkan `@JsonIgnore`; bentuk DTO-nya yang harus tidak
-   punya field tersebut.
-2. **FK tetap `*_id` di database.** Relasi JPA memakai `@ManyToOne` + `@JoinColumn(name = "..._id")`.
-   Service me-resolve `*Uuid` dari request menjadi entity sebelum menyimpan. Jangan menerima
-   `*_id` dari client. Kolom DB `*_uuid` denormalisasi hanya boleh ditambahkan kalau ada alasan
-   performa, dan wajib dijaga konsisten.
-3. **Soft delete, bukan hard delete.** Hapus = isi `deleted_at` + `deleted_by`. `BaseEntity` sudah
-   memasang `@SQLRestriction("deleted_at IS NULL")`, jadi query Hibernate otomatis menyaring data
-   aktif; native query wajib menambahkan predicate sendiri. Jangan memakai `DELETE FROM` untuk
-   data domain.
-4. **Unique = partial index.** Index unik selalu `WHERE deleted_at IS NULL` supaya nilai unik bisa
-   dipakai ulang setelah data lama dihapus. Untuk unik case-insensitive, index ekspresi
-   `lower(kolom)` dengan predicate yang sama.
-5. **Audit diisi server.** `created_*`/`updated_*`/`deleted_*` diisi di satu tempat (audit listener
-   atau `@PrePersist`/`@PreUpdate`), memakai `OffsetDateTime` (bukan `LocalDateTime`). Kolom
-   `*_by` berasal dari principal yang sedang login, bukan body request. Selama auth belum ada,
-   pakai `0L` untuk aksi sistem/seed dan siapkan abstraksi `CurrentUser` saat auth ditambahkan.
-   Seluruh kolom audit (`*_at` dan `*_by`) tidak pernah diekspos ke client.
-6. **MapStruct mengabaikan kolom internal.** Saat memetakan request ke entity, `id`, `uuid`, dan
-   semua kolom audit harus `ignore`; `uuid`/audit diisi service/listener. Entity turunan sebaiknya
-   cukup `@Getter`/`@Setter` (bukan `@Data`) supaya `equals`/`hashCode` tidak memakai field mutable.
+1. **Never leak `id`.** Response DTOs use `uuid`, requests use `*Uuid` in camelCase (e.g.
+   `indukUuid`), and path parameters use `uuid` (e.g. `GET /order-item/{uuid}`). The `id` field and
+   all `*_id` columns are internal only (entity, service, repository, SQL). Do not rely on
+   `@JsonIgnore`; the DTO shape itself must not have those fields.
+2. **FKs stay `*_id` in the database.** JPA relations use `@ManyToOne` + `@JoinColumn(name = "..._id")`.
+   Services resolve `*Uuid` from the request into an entity before saving. Never accept `*_id` from
+   the client. A denormalized `*_uuid` DB column may only be added for a performance reason and must
+   be kept consistent.
+3. **Soft delete, not hard delete.** Delete = set `deleted_at` + `deleted_by`. `BaseEntity` already
+   installs `@SQLRestriction("deleted_at IS NULL")`, so Hibernate queries filter active rows
+   automatically; native queries must add the predicate themselves. Do not use `DELETE FROM` for
+   domain data.
+4. **Unique = partial index.** Unique indexes always use `WHERE deleted_at IS NULL` so a unique
+   value can be reused after the old row is deleted. For case-insensitive uniqueness, use an
+   expression index on `lower(column)` with the same predicate.
+5. **Audit is filled by the server.** `created_*`/`updated_*`/`deleted_*` are filled in one place
+   (an audit listener or `@PrePersist`/`@PreUpdate`) using `OffsetDateTime` (not `LocalDateTime`).
+   The `*_by` columns come from the logged-in principal, never from the request body. While auth is
+   not in place, use `0L` for system/seed actions and prepare a `CurrentUser` abstraction when auth
+   is added. All audit columns (`*_at` and `*_by`) are never exposed to clients.
+6. **MapStruct ignores internal columns.** When mapping request → entity, `id`, `uuid`, and all
+   audit columns must be `ignore`d; `uuid`/audit are filled by the service/listener. Subclass
+   entities should use `@Getter`/`@Setter` (not `@Data`) so `equals`/`hashCode` do not depend on
+   mutable fields.
 
-## Konvensi DTO & JSON
+## DTO & JSON conventions
 
-- Nama field DTO (record component) dan JSON memakai camelCase: `indukUuid`, `nomorTelepon`.
-- Nama tabel dan kolom database tetap snake_case: `order_item`, `induk_id`, `nomor_telepon`; jangan
-  mengubahnya menjadi camelCase. Tabel memakai bentuk singular (lihat bagian naming).
-- Jangan menambahkan `@JsonProperty`/`@JsonNaming` untuk memaksa snake_case. Biarkan Jackson
-  memakai nama record apa adanya.
-- Query parameter multi-kata memakai camelCase (`pageSize`, `sortBy`); path parameter identitas
-  tetap `uuid`.
-- MapStruct memetakan otomatis kalau nama field DTO dan entity sama; kalau beda, pakai
+- DTO field names (record components) and JSON use camelCase: `indukUuid`, `nomorTelepon`.
+- Database table and column names stay snake_case: `order_item`, `induk_id`, `nomor_telepon`; do not
+  convert them to camelCase. Tables use the singular form (see the naming section).
+- Do not add `@JsonProperty`/`@JsonNaming` to force snake_case. Let Jackson use the record names as
+  they are.
+- Multi-word query parameters use camelCase (`pageSize`, `sortBy`); identity path parameters stay
+  `uuid`.
+- MapStruct maps automatically when DTO and entity field names match; when they differ, use
   `@Mapping(source = "...", target = "...")`.
 
-## Konvensi REST
+## REST conventions
 
-REST tidak mewajibkan bentuk plural; itu hanya konvensi gaya. Yang penting konsisten dan mudah
-diprediksi.
+REST does not require plural forms; that is only a style convention. What matters is consistency
+and predictability.
 
-- Path resource memakai **singular** dan kebab-case: `/order-item`, `/order-item/{uuid}`. Jangan
-  mencampur singular dan plural.
-- Aksi ditentukan HTTP method, bukan verb di path: `GET /order-item`, `POST /order-item`,
-  `GET /order-item/{uuid}`, `PUT /order-item/{uuid}`, `DELETE /order-item/{uuid}`.
-- **Update memakai `PUT` dengan semantik full replace.** Client wajib mengirim semua field wajib;
-  field opsional yang tidak dikirim dianggap `null` dan akan mengosongkan nilai lama. Jangan memakai
-  `PATCH`/partial update kecuali ada kebutuhan eksplisit dan didokumentasikan.
-- Path parameter untuk identitas selalu `uuid`, bukan `id`.
+- Resource paths use **singular** and kebab-case: `/order-item`, `/order-item/{uuid}`. Do not mix
+  singular and plural.
+- Actions are determined by the HTTP method, not by verbs in the path: `GET /order-item`,
+  `POST /order-item`, `GET /order-item/{uuid}`, `PUT /order-item/{uuid}`, `DELETE /order-item/{uuid}`.
+- **Updates use `PUT` with full-replace semantics.** Clients must send every required field; an
+  omitted optional field is treated as `null` and clears the old value. Do not use `PATCH`/partial
+  updates unless there is an explicit, documented need.
+- Identity path parameters are always `uuid`, never `id`.
 
 ## Pagination (cursor)
 
-**Semua** endpoint list memakai **cursor pagination**, termasuk tabel master yang kecil. Tujuannya
-kontrak API yang seragam: satu bentuk request, satu bentuk response, satu kode client. Offset
-semakin lambat seiring halaman dan tidak cocok untuk infinite scroll, jadi tidak dipakai sebagai
-jalur utama di mana pun.
+**Every** list endpoint uses **cursor pagination**, including small master tables. The goal is a
+uniform API contract: one request shape, one response shape, one client implementation. Offset gets
+slower with every page and does not suit infinite scroll, so it is not used as the primary path
+anywhere.
 
-Konsekuensi yang diterima: tidak ada nomor halaman dan tidak ada total count. Untuk tabel master,
-navigasi dilakukan lewat filter/pencarian, bukan `page=N`. `COUNT(*)` hanya ditambahkan kalau ada
-kebutuhan eksplisit, sebagai endpoint terpisah — jangan diselipkan ke response list.
+Accepted consequence: there are no page numbers and no total count. For master tables, navigation
+happens through filters/search, not `page=N`. `COUNT(*)` is only added when there is an explicit
+need, as a separate endpoint — never tucked into the list response.
 
-- Cursor yang diekspos ke client hanya `uuid` baris terakhir. Jangan pernah mengirim `id`, offset,
-  atau nomor halaman di cursor.
-- Query param: `cursor` (UUID, opsional), `limit` (default 20, maksimum 100), `sort`, dan `order`
+- The only cursor exposed to clients is the `uuid` of the last row. Never send `id`, an offset, or a
+  page number in the cursor.
+- Query params: `cursor` (UUID, optional), `limit` (default 20, maximum 100), `sort`, and `order`
   (`asc`/`desc`).
-- Kalau `sort` tidak dikirim, default `ORDER BY id DESC`; `order` default `desc`. `id` tetap
-  internal dan tidak diekspos ke client.
-- Saat `cursor` ada, service:
-  1. load baris cursor berdasarkan `uuid` (lookup hash index);
-  2. kalau tidak ada atau sudah soft-delete, kembalikan `400` cursor tidak valid — bukan `404`;
-  3. pastikan baris cursor masih cocok dengan filter yang sama; kalau tidak, `400`;
-  4. pakai `id` (dan nilai kolom sort) baris itu sebagai posisi keyset;
-  5. query halaman berikutnya dengan filter + predicate keyset + `ORDER BY` yang sama.
-- Cursor hanya valid untuk kombinasi filter + sort yang sama. Kalau client mengubah filter/sort,
-  reset cursor (kirim request tanpa `cursor`).
-- Selalu tambahkan `id` sebagai tiebreaker unik di akhir `ORDER BY`, dan gunakan tuple comparison
-  untuk sort non-unik.
-- Ambil `limit + 1` baris untuk menentukan `hasMore`, lalu buang baris ekstra. `nextCursor` adalah
-  `uuid` baris terakhir yang benar-benar dikembalikan, atau `null` kalau tidak ada lagi.
-- Filter wajib diterapkan juga saat lookup cursor; jangan memakai posisi baris yang tidak terlihat
-  oleh filter saat ini.
-- Karena `uuid` tidak unique di database, lookup cursor jangan memakai `getSingleResult()`; ambil
-  satu baris secara deterministik (`ORDER BY id LIMIT 1`) atau tangani duplikat.
-- `sort` hanya menerima field yang di-whitelist; jangan interpolasi nama kolom dari request langsung
-  ke JPQL/SQL. Jangan menjadikan `uuid` sebagai sort utama karena UUID v4 acak, bukan urutan waktu.
-- Jangan memakai offset untuk endpoint list mana pun. Pengecualian hanya kalau diminta eksplisit dan
-  didokumentasikan, misalnya endpoint khusus yang butuh "lompat ke halaman N".
-- Tabel kecil tidak dikecualikan dari aturan ini, tetapi **tidak wajib punya index keyset**. Seq scan
-  pada tabel master beberapa halaman itu murah; query keyset tetap benar walau tanpa index.
-- `sort` boleh tidak didukung sama sekali pada tabel master (cukup default `ORDER BY id DESC`).
-  Itu tetap konsisten karena `sort` opsional di kontrak; jangan bikin parameter berbeda per resource.
-- Hindari sort pada kolom yang sering berubah (`updated_at`) untuk list panjang: baris bisa
-  terlewat atau dobel saat nilainya berubah di tengah pagination. Untuk tabel master, urutkan
-  berdasarkan kolom yang stabil.
+- When `sort` is not sent, default to `ORDER BY id DESC`; `order` defaults to `desc`. `id` stays
+  internal and is not exposed to clients.
+- When `cursor` is present, the service:
+  1. loads the cursor row by `uuid` (hash index lookup);
+  2. if it does not exist or is soft deleted, returns `400` invalid cursor — not `404`;
+  3. verifies the cursor row still matches the same filter; if not, `400`;
+  4. uses that row's `id` (and sort column value) as the keyset position;
+  5. queries the next page with the same filter + keyset predicate + `ORDER BY`.
+- A cursor is only valid for the same filter + sort combination. If the client changes
+  filter/sort, reset the cursor (send the request without `cursor`).
+- Always append `id` as a unique tiebreaker at the end of `ORDER BY`, and use tuple comparison for
+  non-unique sorts.
+- Fetch `limit + 1` rows to determine `hasMore`, then drop the extra row. `nextCursor` is the `uuid`
+  of the last row actually returned, or `null` when there is nothing more.
+- Filters must also be applied when looking up the cursor; never use the position of a row that the
+  current filter cannot see.
+- Because `uuid` is not unique in the database, never use `getSingleResult()` for the cursor
+  lookup; fetch one row deterministically (`ORDER BY id LIMIT 1`) or handle duplicates.
+- `sort` only accepts whitelisted fields; never interpolate column names from the request into
+  JPQL/SQL. Do not make `uuid` the primary sort column, since UUID v4 is random, not time-ordered.
+- Do not use offset for any list endpoint. The only exception is an explicit, documented request,
+  e.g. a dedicated endpoint that needs "jump to page N".
+- Small tables are not exempt from this rule, but they **do not need a keyset index**. A seq scan on
+  a master table of a few pages is cheap; a keyset query stays correct without an index.
+- `sort` may be unsupported entirely on master tables (the default `ORDER BY id DESC` is enough).
+  That is still consistent because `sort` is optional in the contract; do not create per-resource
+  parameters.
+- Avoid sorting on frequently changing columns (`updated_at`) for long lists: rows can be skipped or
+  duplicated when values change mid-pagination. For master tables, sort by a stable column.
 
-Bentuk response:
+Response shape:
 
 ```json
 {
@@ -263,14 +267,14 @@ Bentuk response:
 }
 ```
 
-DTO-nya bisa generik:
+The DTO can be generic:
 
 ```java
 public record CursorPageDTO<T>(List<T> items, UUID nextCursor, boolean hasMore) {
 }
 ```
 
-Contoh keyset default (`sort` tidak dikirim → `ORDER BY id DESC`):
+Default keyset example (`sort` not sent → `ORDER BY id DESC`):
 
 ```sql
 SELECT ...
@@ -279,59 +283,62 @@ WHERE /* filter */
   AND (:cursorId IS NULL OR id < :cursorId)
 ORDER BY id DESC
 LIMIT :limitPlusOne;
--- deleted_at IS NULL sudah ditambahkan otomatis oleh @SQLRestriction
+-- deleted_at IS NULL is added automatically by @SQLRestriction
 ```
 
-Untuk sort non-unik:
+For non-unique sorts:
 
 ```sql
 WHERE (sort_col, id) < (:cursorSort, :cursorId)
 ORDER BY sort_col DESC, id DESC
 ```
 
-Index pendukung:
+Supporting indexes:
 
-- lookup cursor: hash index `uuid` yang sudah ada;
-- keyset default: PK `id`; kalau banyak baris soft-delete, partial index `(id) WHERE deleted_at IS NULL`;
-- sort lain: btree `(sort_col, id) WHERE deleted_at IS NULL`.
+- cursor lookup: the existing hash index on `uuid`;
+- default keyset: the `id` PK; if there are many soft-deleted rows, a partial index
+  `(id) WHERE deleted_at IS NULL`;
+- other sorts: a btree `(sort_col, id) WHERE deleted_at IS NULL`.
 
-Index di atas hanya ditambahkan pada tabel yang cukup besar. Tabel master kecil tetap memakai
-cursor pagination tanpa index keyset tambahan — jangan bikin index hanya karena "biar konsisten".
-Index `deleted_at` berdiri sendiri tidak membantu predicate `IS NULL` (nyaris semua baris cocok,
-planner memilih seq scan) dan hanya menambah biaya tulis. Untuk query data terhapus
-(purge/restore), pakai partial `(deleted_at) WHERE deleted_at IS NOT NULL`.
+Only add the indexes above to tables that are large enough. Small master tables keep using cursor
+pagination without extra keyset indexes — do not create an index just to "stay consistent". A
+standalone `deleted_at` index does not help an `IS NULL` predicate (almost every row matches, so the
+planner picks a seq scan) and only adds write cost. For querying deleted rows (purge/restore), use a
+partial index `(deleted_at) WHERE deleted_at IS NOT NULL`.
 
-## Aturan
+## Rules
 
-1. **Skema dikelola Flyway, bukan Hibernate.** Hibernate memakai `schema-management.strategy=validate`.
-   Perubahan skema harus berupa migrasi baru di `src/main/resources/db/migration`
-   (`V1__...sql`, `V2__...sql`, dst.), jangan mengubah migrasi yang sudah ada dan jangan
-   mengandalkan auto-DDL.
-2. **Entity tidak boleh keluar dari REST layer.** Resource hanya mengembalikan DTO; field internal
-   seperti `id`, semua `*_id`, dan seluruh kolom audit (`created_*`, `updated_*`, `deleted_*`)
-   sengaja tidak ada di DTO. Identitas publik yang dipakai client adalah `uuid`/`*Uuid` (lihat
-   bagian model data di atas).
-3. **Urutan annotation processor penting** di `build.gradle.kts`: Lombok → `lombok-mapstruct-binding`
-   → MapStruct. Mengubah urutan ini membuat mapper gagal melihat getter/builder hasil Lombok.
-4. **Test memakai PostgreSQL asli**, bukan H2/in-memory. Test Quarkus (`@QuarkusTest`) akan gagal
-   kalau `docker compose up -d postgres` belum dijalankan.
-5. **Java 25 + virtual threads:** jangan turunkan compatibility; pakai `record` untuk DTO,
-   `@RunOnVirtualThread` di level class untuk semua resource, dan MapStruct untuk entity ↔ DTO
-   (detail di bagian virtual threads di atas).
-6. Encoding UTF-8 dan compiler flag `-parameters` sudah diatur di `build.gradle.kts`; jangan
-   menghapusnya (dibutuhkan Jackson/MapStruct).
-7. Komentar dan nama endpoint di repo ini campur Indonesia–Inggris. Ikuti gaya di file sekitarnya,
-   jangan menyeragamkan yang sudah ada.
-8. Jangan commit `build/`, `.gradle/`, atau artefak hasil generate.
-9. **`id` internal, `uuid` publik.** Jangan mengekspos `id` atau `*_id` lewat DTO, query param,
-   path, header, maupun pesan error; gunakan `uuid`/`*Uuid` (`*_uuid` hanya nama kolom database).
-10. **Data domain tidak dihapus fisik.** Soft delete lewat `deleted_at`/`deleted_by`; `BaseEntity`
-    memasang `@SQLRestriction("deleted_at IS NULL")` supaya query Hibernate otomatis hanya membaca
-    data aktif. Index unik baru harus partial (`WHERE deleted_at IS NULL`).
-11. **Kolom audit diisi server**, termasuk `created_by`/`updated_by`/`deleted_by` dari principal —
-    jangan pernah menerimanya dari body request.
-12. **Semua list endpoint memakai cursor pagination**, termasuk tabel master kecil, supaya kontrak
-    API seragam. Cursor adalah `uuid` baris terakhir; offset/page tidak dipakai. Tabel kecil boleh
-    tidak punya index keyset, dan boleh tidak mendukung `sort`. Detail di bagian pagination di atas.
-13. **Kerja CPU-heavy (generate PDF/Excel, kompresi) tidak dijalankan di service ini.** Delegasikan
-    ke service lain lewat HTTP client; virtual thread hanya untuk blocking I/O CRUD.
+1. **The schema is managed by Flyway, not Hibernate.** Hibernate uses
+   `schema-management.strategy=validate`. Schema changes must be new migrations in
+   `src/main/resources/db/migration` (`V1__...sql`, `V2__...sql`, etc.); do not modify existing
+   migrations and do not rely on auto-DDL.
+2. **Entities must not leave the REST layer.** Resources return DTOs only; internal fields such as
+   `id`, all `*_id`, and every audit column (`created_*`, `updated_*`, `deleted_*`) are deliberately
+   absent from DTOs. The public identity that clients use is `uuid`/`*Uuid` (see the data model
+   section above).
+3. **Annotation processor order matters** in `build.gradle.kts`: Lombok → `lombok-mapstruct-binding`
+   → MapStruct. Changing this order makes mappers fail to see Lombok-generated getters/builders.
+4. **Tests use a real PostgreSQL**, not H2/in-memory. Quarkus tests (`@QuarkusTest`) fail unless
+   `docker compose up -d postgres` has been run.
+5. **Java 25 + virtual threads:** do not lower compatibility; use `record` for DTOs,
+   `@RunOnVirtualThread` at class level for every resource, and MapStruct for entity ↔ DTO (details
+   in the virtual threads section above).
+6. UTF-8 encoding and the `-parameters` compiler flag are already configured in `build.gradle.kts`;
+   do not remove them (Jackson/MapStruct need them).
+7. Code comments and endpoint names in this repo mix Indonesian and English. Follow the style of the
+   surrounding files; do not normalize existing text. `README.md` and `AGENTS.md` themselves are
+   always in English.
+8. Do not commit `build/`, `.gradle/`, or generated artifacts.
+9. **`id` internal, `uuid` public.** Do not expose `id` or `*_id` through DTOs, query params, paths,
+   headers, or error messages; use `uuid`/`*Uuid` (`*_uuid` is only a database column name).
+10. **Domain data is never physically deleted.** Soft delete via `deleted_at`/`deleted_by`;
+    `BaseEntity` installs `@SQLRestriction("deleted_at IS NULL")` so Hibernate queries read only
+    active data. New unique indexes must be partial (`WHERE deleted_at IS NULL`).
+11. **Audit columns are filled by the server**, including `created_by`/`updated_by`/`deleted_by`
+    from the principal — never accept them from the request body.
+12. **Every list endpoint uses cursor pagination**, including small master tables, so the API
+    contract stays uniform. The cursor is the `uuid` of the last row; offsets/pages are not used.
+    Small tables may skip keyset indexes and may not support `sort`. Details in the pagination
+    section above.
+13. **CPU-heavy work (PDF/Excel generation, compression) does not run in this service.** Delegate it
+    to another service over an HTTP client; virtual threads are only for blocking I/O CRUD.
