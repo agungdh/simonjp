@@ -9,6 +9,7 @@ pada hal yang dibutuhkan saat mengubah kode.
 - REST: `quarkus-rest` + `quarkus-rest-jackson`; OpenAPI: `quarkus-smallrye-openapi` + `quarkus-swagger-ui`.
 - Persistensi: Hibernate ORM (JPA), PostgreSQL, Flyway.
 - Lombok (`compileOnly`) + MapStruct, semuanya CDI bean.
+- Virtual threads: semua REST resource blocking memakai `@RunOnVirtualThread` di level class.
 
 ## Perintah
 
@@ -52,6 +53,25 @@ Aturan layer:
 4. Domain tidak boleh import `service/`, `repository/`, `resource/`, atau `dto/`.
 5. Jangan menambah port/adapter/use-case interface ala hexagonal/clean architecture; layered
    sederhana ini sudah cukup kecuali ada kebutuhan nyata.
+
+## Virtual threads, Java 25 & mapping
+
+- **Semua REST resource memakai virtual threads.** Pasang `@RunOnVirtualThread` di level class
+  (seperti `GreetingResource`/`DataResource`), bukan per method, supaya konsisten. Endpoint harus
+  blocking dan mengembalikan DTO/`Response`, bukan `Uni`/`Multi`.
+- **Virtual thread cocok untuk CRUD** karena beban utamanya blocking I/O (JDBC, Hibernate, HTTP
+  client). Ini bukan percepatan CPU: jangan menjalankan generate PDF/Excel, kompresi, atau
+  perhitungan berat di service ini. Delegasikan ke service lain lewat HTTP client; panggilan I/O-nya
+  tetap aman di virtual thread.
+- Virtual thread tidak menambah kapasitas database; tetap atur ukuran connection pool.
+- `@Transactional` tetap di layer service, bukan resource.
+- **DTO selalu `record` immutable**, termasuk request, response, dan wrapper pagination. Jangan
+  memakai Lombok/`@Data` di DTO. Field camelCase dan beri `@Schema` untuk OpenAPI.
+- **Konversi entity ↔ DTO hanya lewat MapStruct** di `mapper/` (`componentModel = "cdi"`). Resource
+  tidak boleh mapping manual; service memakai mapper. Saat request → entity, `id`, `uuid`, dan kolom
+  audit wajib `ignore`; `uuid`/audit diisi service/listener.
+- **Java 25 adalah target.** Jangan menurunkan `sourceCompatibility`/`targetCompatibility`; gunakan
+  `record`, pattern matching, dan fitur Java 25 lain yang stabil.
 
 ## Model data & konvensi database
 
@@ -284,7 +304,9 @@ Endpoint lama `/contoh/data` masih mengembalikan list biasa; endpoint list baru 
    → MapStruct. Mengubah urutan ini membuat mapper gagal melihat getter/builder hasil Lombok.
 5. **Test memakai PostgreSQL asli**, bukan H2/in-memory. Test Quarkus (`@QuarkusTest`) akan gagal
    kalau `docker compose up -d postgres` belum dijalankan.
-6. Java 25 tersedia: pakai `record` untuk DTO dan `@RunOnVirtualThread` untuk endpoint blocking.
+6. **Java 25 + virtual threads:** jangan turunkan compatibility; pakai `record` untuk DTO,
+   `@RunOnVirtualThread` di level class untuk semua resource, dan MapStruct untuk entity ↔ DTO
+   (detail di bagian virtual threads di atas).
 7. Encoding UTF-8 dan compiler flag `-parameters` sudah diatur di `build.gradle.kts`; jangan
    menghapusnya (dibutuhkan Jackson/MapStruct).
 8. Komentar dan nama endpoint di repo ini campur Indonesia–Inggris. Ikuti gaya di file sekitarnya,
@@ -299,3 +321,5 @@ Endpoint lama `/contoh/data` masih mengembalikan list biasa; endpoint list baru 
     jangan pernah menerimanya dari body request.
 13. **List endpoint memakai cursor pagination.** Cursor adalah `uuid` baris terakhir; jangan
     memakai offset/page untuk list utama. Detail di bagian pagination di atas.
+14. **Kerja CPU-heavy (generate PDF/Excel, kompresi) tidak dijalankan di service ini.** Delegasikan
+    ke service lain lewat HTTP client; virtual thread hanya untuk blocking I/O CRUD.
