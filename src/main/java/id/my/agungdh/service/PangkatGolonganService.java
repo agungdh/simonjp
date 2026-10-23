@@ -3,7 +3,6 @@ package id.my.agungdh.service;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-import id.my.agungdh.domain.AuditListener;
 import id.my.agungdh.domain.PangkatGolongan;
 import id.my.agungdh.dto.CursorPageDTO;
 import id.my.agungdh.dto.PangkatGolonganRequest;
@@ -87,7 +86,7 @@ public class PangkatGolonganService {
         }
 
         entity.setDeletedAt(OffsetDateTime.now());
-        entity.setDeletedBy(AuditListener.SYSTEM_USER_ID);
+        // deletedBy: null bila tidak ada principal
     }
 
     private PangkatGolongan find(UUID uuid) {

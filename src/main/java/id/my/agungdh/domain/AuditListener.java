@@ -7,12 +7,12 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 
 /**
- * Mengisi kolom audit secara server-side di satu tempat. Selama auth belum ada, aksi pengguna
- * diwakili id {@code 0L}; nanti diganti principal lewat abstraksi {@code CurrentUser}.
+ * Mengisi kolom audit secara server-side di satu tempat. Kolom {@code *_at} (timestamp) diisi
+ * bila diketahui; kolom {@code *_by} hanya diisi dari principal yang sedang login. Bila tidak
+ * ada principal (auth belum ada / tidak diketahui), kolom {@code *_by} dibiarkan {@code null}
+ * ("unknown") — tidak pernah dibuat nilai palsu seperti {@code 0L}.
  */
 public class AuditListener {
-
-    public static final long SYSTEM_USER_ID = 0L;
 
     @PrePersist
     void prePersist(BaseEntity entity) {
@@ -24,20 +24,14 @@ public class AuditListener {
         if (entity.getCreatedAt() == null) {
             entity.setCreatedAt(now);
         }
-        if (entity.getCreatedBy() == null) {
-            entity.setCreatedBy(SYSTEM_USER_ID);
-        }
+        // createdBy: null bila tidak ada principal
         entity.setUpdatedAt(now);
-        if (entity.getUpdatedBy() == null) {
-            entity.setUpdatedBy(SYSTEM_USER_ID);
-        }
+        // updatedBy: null bila tidak ada principal
     }
 
     @PreUpdate
     void preUpdate(BaseEntity entity) {
         entity.setUpdatedAt(OffsetDateTime.now());
-        if (entity.getUpdatedBy() == null) {
-            entity.setUpdatedBy(SYSTEM_USER_ID);
-        }
+        // updatedBy: null bila tidak ada principal
     }
 }

@@ -183,10 +183,11 @@ CREATE UNIQUE INDEX ux_contoh_nama_active ON contoh (nama) WHERE deleted_at IS N
 5. **Audit is filled by the server when known.** `created_*`/`updated_*`/`deleted_*` are filled in
    one place (an audit listener or `@PrePersist`/`@PreUpdate`) using `OffsetDateTime` (not
    `LocalDateTime`). The `*_by` columns come from the logged-in principal, never from the request
-   body. While auth is not in place, use `0L` for system/seed actions and prepare a `CurrentUser`
-   abstraction when auth is added. All audit columns are nullable because data imported from legacy
-   applications may not carry this metadata: `NULL` means "unknown", never invent a value, and do
-   not make behavior depend on audit values (except `deleted_at` for the soft-delete filter). All
+   body. While auth is not in place (no principal available), leave `*_by` as `NULL` ("unknown")
+   instead of inventing a value such as `0L`; prepare a `CurrentUser` abstraction when auth is added.
+   All audit columns are nullable because data imported from legacy applications may not carry this
+   metadata: `NULL` means "unknown", never invent a value, and do not make behavior depend on audit
+   values (except `deleted_at` for the soft-delete filter). All
    audit columns (`*_at` and `*_by`) are never exposed to clients.
 6. **MapStruct ignores internal columns.** When mapping request → entity, `id`, `uuid`, and all
    audit columns must be `ignore`d; `uuid`/audit are filled by the service/listener. Subclass

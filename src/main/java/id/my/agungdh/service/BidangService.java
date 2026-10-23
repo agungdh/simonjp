@@ -3,7 +3,6 @@ package id.my.agungdh.service;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-import id.my.agungdh.domain.AuditListener;
 import id.my.agungdh.domain.Bidang;
 import id.my.agungdh.dto.BidangRequest;
 import id.my.agungdh.dto.BidangResponse;
@@ -89,7 +88,7 @@ public class BidangService {
         }
 
         entity.setDeletedAt(OffsetDateTime.now());
-        entity.setDeletedBy(AuditListener.SYSTEM_USER_ID);
+        // deletedBy: null bila tidak ada principal
     }
 
     private Bidang find(UUID uuid) {
