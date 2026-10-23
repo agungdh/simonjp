@@ -316,9 +316,12 @@ partial index `(deleted_at) WHERE deleted_at IS NOT NULL`.
 ## Rules
 
 1. **The schema is managed by Flyway, not Hibernate.** Hibernate uses
-   `schema-management.strategy=validate`. Schema changes must be new migrations in
-   `src/main/resources/db/migration` (`V1__...sql`, `V2__...sql`, etc.); do not modify existing
-   migrations and do not rely on auto-DDL.
+   `schema-management.strategy=validate`. Schema changes must be migrations in
+   `src/main/resources/db/migration` (`V1__...sql`, `V2__...sql`, etc.); do not rely on auto-DDL.
+   While the project is pre-release, keep one schema migration and fold changes into it instead of
+   adding revision migrations (as long as no shared/production database has applied it). Once a
+   migration has shipped, treat it as immutable and add a new version instead.
+   Do not modify a migration that has already been applied outside local/dev databases.
 2. **Entities must not leave the REST layer.** Resources return DTOs only; internal fields such as
    `id`, all `*_id`, and every audit column (`created_*`, `updated_*`, `deleted_*`) are deliberately
    absent from DTOs. The public identity that clients use is `uuid`/`*Uuid` (see the data model

@@ -1,15 +1,17 @@
 -- Tabel master bidang dan pangkat golongan, serta pegawai.
 -- Semua tabel memakai audit standar BaseEntity: id, uuid, *_at, *_by, deleted_*.
+-- Kolom audit bersifat opsional/informasional (untuk penelusuran langsung di database) dan tidak
+-- punya default: baris hasil impor aplikasi lama boleh NULL, artinya "tidak diketahui".
 
 CREATE TABLE bidang (
     id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     uuid        UUID NOT NULL,
     bidang      VARCHAR(255) NOT NULL,
 
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by  BIGINT NOT NULL,
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_by  BIGINT NOT NULL,
+    created_at  TIMESTAMPTZ,
+    created_by  BIGINT,
+    updated_at  TIMESTAMPTZ,
+    updated_by  BIGINT,
     deleted_at  TIMESTAMPTZ,
     deleted_by  BIGINT
 );
@@ -25,10 +27,10 @@ CREATE TABLE pangkat_golongan (
     golongan    VARCHAR(10) NOT NULL,
     ruang       VARCHAR(10) NOT NULL,
 
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by  BIGINT NOT NULL,
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_by  BIGINT NOT NULL,
+    created_at  TIMESTAMPTZ,
+    created_by  BIGINT,
+    updated_at  TIMESTAMPTZ,
+    updated_by  BIGINT,
     deleted_at  TIMESTAMPTZ,
     deleted_by  BIGINT
 );
@@ -51,10 +53,10 @@ CREATE TABLE pegawai (
     bidang_id                           BIGINT NOT NULL REFERENCES bidang (id),
     pangkat_golongan_id                 BIGINT REFERENCES pangkat_golongan (id),
 
-    created_at                          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by                          BIGINT NOT NULL,
-    updated_at                          TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_by                          BIGINT NOT NULL,
+    created_at                          TIMESTAMPTZ,
+    created_by                          BIGINT,
+    updated_at                          TIMESTAMPTZ,
+    updated_by                          BIGINT,
     deleted_at                          TIMESTAMPTZ,
     deleted_by                          BIGINT,
 
