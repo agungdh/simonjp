@@ -202,7 +202,10 @@ diprediksi.
 - Path resource memakai **singular** dan kebab-case: `/order-item`, `/order-item/{uuid}`. Jangan
   mencampur singular dan plural.
 - Aksi ditentukan HTTP method, bukan verb di path: `GET /order-item`, `POST /order-item`,
-  `GET /order-item/{uuid}`, `PATCH /order-item/{uuid}`, `DELETE /order-item/{uuid}`.
+  `GET /order-item/{uuid}`, `PUT /order-item/{uuid}`, `DELETE /order-item/{uuid}`.
+- **Update memakai `PUT` dengan semantik full replace.** Client wajib mengirim semua field wajib;
+  field opsional yang tidak dikirim dianggap `null` dan akan mengosongkan nilai lama. Jangan memakai
+  `PATCH`/partial update kecuali ada kebutuhan eksplisit dan didokumentasikan.
 - Path parameter untuk identitas selalu `uuid`, bukan `id`.
 
 ## Pagination (cursor)

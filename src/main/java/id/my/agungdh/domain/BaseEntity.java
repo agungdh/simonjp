@@ -1,0 +1,53 @@
+package id.my.agungdh.domain;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+import org.hibernate.annotations.SQLRestriction;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.EntityListeners;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.MappedSuperclass;
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * Basis semua entity: identitas internal ({@code id}), identitas publik ({@code uuid}), dan audit.
+ * {@code @SQLRestriction} membuat query Hibernate otomatis menyaring baris yang sudah soft delete.
+ */
+@Getter
+@Setter
+@MappedSuperclass
+@EntityListeners(AuditListener.class)
+@SQLRestriction("deleted_at IS NULL")
+public abstract class BaseEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false, updatable = false)
+    private Long id;
+
+    @Column(name = "uuid", nullable = false, updatable = false)
+    private UUID uuid;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "created_by", nullable = false, updatable = false)
+    private Long createdBy;
+
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
+
+    @Column(name = "updated_by", nullable = false)
+    private Long updatedBy;
+
+    @Column(name = "deleted_at")
+    private OffsetDateTime deletedAt;
+
+    @Column(name = "deleted_by")
+    private Long deletedBy;
+}

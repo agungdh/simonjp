@@ -1,12 +1,13 @@
 # simonjp
 
-REST API built with Quarkus. The repository currently contains only the project
-infrastructure: no domain endpoints or schema migrations yet.
+REST API built with Quarkus. Modul yang sudah tersedia: master **bidang**, master
+**pangkat golongan**, dan **pegawai** (CRUD penuh, belum termasuk user/auth).
 
 ## Stack
 
 - Quarkus 3.40.1.1, Java 25, Gradle Kotlin DSL
 - REST: `quarkus-rest` + `quarkus-rest-jackson`
+- Validation: `quarkus-hibernate-validator`
 - OpenAPI: `quarkus-smallrye-openapi` + `quarkus-swagger-ui`
 - Persistence: Hibernate ORM (JPA), PostgreSQL, Flyway
 - Lombok (compile-time) + MapStruct
@@ -22,8 +23,8 @@ docker compose up -d postgres
 
 The application is available at <http://localhost:8080>. Dev UI: <http://localhost:8080/q/dev/>.
 
-To send your first endpoint, add a JAX-RS resource under
-`src/main/java/id/my/agungdh/resource/`. See `AGENTS.md` for the layering and naming rules.
+Domain endpoints are under `src/main/java/id/my/agungdh/resource/`. See `AGENTS.md` for the layering
+and naming rules.
 
 ## Database
 
@@ -35,7 +36,8 @@ The datasource defaults match `compose.yml` and can be overridden with environme
 | `DB_USERNAME` | `admin` |
 | `DB_PASSWORD` | `admin` |
 
-Flyway reads migrations from `src/main/resources/db/migration` (currently empty).
+Flyway reads migrations from `src/main/resources/db/migration`. `V1` membuat tabel `bidang`,
+`pangkat_golongan`, dan `pegawai`; `V2` mengisi seed bidang dan pangkat golongan.
 Hibernate uses `schema-management.strategy=validate`, so the mapping must match the migrated
 schema. Add schema changes as versioned migrations (`V1__...sql`, `V2__...sql`, ...); never let
 Hibernate create or update the schema.
@@ -49,7 +51,26 @@ The OpenAPI document is generated from JAX-RS and MicroProfile OpenAPI annotatio
 | <http://localhost:8080/q/swagger-ui> | Interactive Swagger UI |
 | <http://localhost:8080/q/openapi> | OpenAPI document (YAML; `?format=json` for JSON) |
 
-With no resources defined yet, the document contains only the API info metadata.
+Semua endpoint list memakai cursor pagination (`cursor`, `limit`), dan identitas publik memakai
+`uuid`.
+
+| Method | Path | Keterangan |
+| --- | --- | --- |
+| `GET` | `/bidang` | List bidang, filter `search` |
+| `POST` | `/bidang` | Buat bidang |
+| `GET` | `/bidang/{uuid}` | Detail bidang |
+| `PUT` | `/bidang/{uuid}` | Ganti seluruh data bidang |
+| `DELETE` | `/bidang/{uuid}` | Soft delete bidang |
+| `GET` | `/pangkat-golongan` | List pangkat golongan, filter `search` |
+| `POST` | `/pangkat-golongan` | Buat pangkat golongan |
+| `GET` | `/pangkat-golongan/{uuid}` | Detail pangkat golongan |
+| `PUT` | `/pangkat-golongan/{uuid}` | Ganti seluruh data pangkat golongan |
+| `DELETE` | `/pangkat-golongan/{uuid}` | Soft delete pangkat golongan |
+| `GET` | `/pegawai` | List pegawai, filter `search`, `tipe`, `status`, `bidangUuid`, `pangkatGolonganUuid`, `kategoriJabatan`, `kategoriKebutuhanJamPelatihan` |
+| `POST` | `/pegawai` | Buat pegawai |
+| `GET` | `/pegawai/{uuid}` | Detail pegawai |
+| `PUT` | `/pegawai/{uuid}` | Ganti seluruh data pegawai |
+| `DELETE` | `/pegawai/{uuid}` | Soft delete pegawai |
 
 ## Build
 
@@ -74,5 +95,5 @@ src/main/java/id/my/agungdh/
 └── service/     # business logic and transactions
 ```
 
-The directories are created as code is added. Layer dependencies and database conventions are
+The directories map one-to-one to the layers above. Layer dependencies and database conventions are
 documented in [`AGENTS.md`](AGENTS.md).
