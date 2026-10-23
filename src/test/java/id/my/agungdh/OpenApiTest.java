@@ -3,7 +3,6 @@ package id.my.agungdh;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.Matchers.hasKey;
 
 import org.junit.jupiter.api.Test;
 
@@ -13,15 +12,13 @@ import io.quarkus.test.junit.QuarkusTest;
 class OpenApiTest {
 
     @Test
-    void dokumenOpenApiMemuatSemuaEndpoint() {
+    void dokumenOpenApiTersedia() {
         given()
                 .when().get("/q/openapi?format=json")
                 .then()
                 .statusCode(200)
                 .body("info.title", is("SimonJP API"))
-                .body("paths", hasKey("/hello"))
-                .body("paths", hasKey("/contoh/data"))
-                .body("paths", hasKey("/contoh/data/{id}"));
+                .body("info.version", is("1.0.0"));
     }
 
     @Test

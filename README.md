@@ -1,124 +1,31 @@
 # simonjp
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+REST API built with Quarkus. The repository currently contains only the project
+infrastructure: no domain endpoints or schema migrations yet.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+## Stack
 
-## Running the application in dev mode
+- Quarkus 3.40.1.1, Java 25, Gradle Kotlin DSL
+- REST: `quarkus-rest` + `quarkus-rest-jackson`
+- OpenAPI: `quarkus-smallrye-openapi` + `quarkus-swagger-ui`
+- Persistence: Hibernate ORM (JPA), PostgreSQL, Flyway
+- Lombok (compile-time) + MapStruct
 
-You can run your application in dev mode that enables live coding using:
+## Running in dev mode
 
-```shell script
+Start PostgreSQL first; Flyway runs when the application boots.
+
+```shell
+docker compose up -d postgres
 ./gradlew quarkusDev
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+The application is available at <http://localhost:8080>. Dev UI: <http://localhost:8080/q/dev/>.
 
-## Packaging and running the application
+To send your first endpoint, add a JAX-RS resource under
+`src/main/java/id/my/agungdh/resource/`. See `AGENTS.md` for the layering and naming rules.
 
-The application can be packaged using:
-
-```shell script
-./gradlew build
-```
-
-It produces the `quarkus-run.jar` file in the `build/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `build/quarkus-app/lib/` directory.
-
-The application is now runnable using `java -jar build/quarkus-app/quarkus-run.jar`.
-
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
-./gradlew build -Dquarkus.package.jar.type=uber-jar
-```
-
-The application, packaged as an _über-jar_, is now runnable using `java -jar build/*-runner.jar`.
-
-## API documentation (OpenAPI / Swagger UI)
-
-The API is documented with [SmallRye OpenAPI](https://quarkus.io/guides/smallrye-openapi) and comes
-with a Swagger UI. Both are available in dev mode and in the packaged/native build
-(`quarkus.swagger-ui.always-include=true` in `application.yml`).
-
-| URL | Description |
-| --- | --- |
-| <http://localhost:8080/q/swagger-ui> | Interactive Swagger UI |
-| <http://localhost:8080/q/openapi> | OpenAPI document (YAML by default, `?format=json` for JSON) |
-
-The document is generated from the JAX-RS annotations plus the MicroProfile OpenAPI annotations on
-the resources and record DTOs (`@Tag`, `@Operation`, `@APIResponse`, `@Parameter`, `@Schema`), so the
-descriptions follow the code instead of a hand-written file.
-
-```shell script
-curl -s "localhost:8080/q/openapi?format=json" | jq '.paths | keys'
-# ["/contoh/data", "/contoh/data/{id}", "/hello"]
-```
-
-## Lombok, MapStruct, and record DTOs
-
-The sample API is split into layers so the mapping is easy to see:
-
-| Layer | Class | Purpose |
-| --- | --- | --- |
-| Entity | `domain/Salam` | Mutable model with Lombok (`@Data`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`) |
-| DTO | `dto/SalamDTO`, `dto/SalamRequest`, `dto/HelloDTO` | Immutable `record` DTOs used by the REST layer |
-| Mapper | `mapper/SalamMapper` | MapStruct mapper with `componentModel = "cdi"`, injectable as a CDI bean |
-| Service | `service/SalamService` | In-memory sample data and entity <-> DTO mapping |
-| Resource | `resource/DataResource` | REST endpoints that only expose DTOs |
-
-Endpoints:
-
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/hello` | Returns `HelloDTO`: message, timestamp, thread name, and virtual-thread flag |
-| `GET` | `/contoh/data` | Returns the sample data as a list of `SalamDTO` |
-| `GET` | `/contoh/data/{id}` | Returns one `SalamDTO`, or `404` when the id is unknown |
-| `POST` | `/contoh/data` | Accepts a `SalamRequest`, returns `201` with the created `SalamDTO` |
-
-`/hello` and `/contoh/data` are annotated with `@RunOnVirtualThread`, so those blocking endpoints run
-on virtual threads; `/hello` exposes the actual thread in its `thread` field.
-
-```shell script
-curl -s localhost:8080/hello
-# {"message":"Hello from Quarkus REST","timestamp":"...","thread":"VirtualThread[...]","virtualThread":true}
-
-curl -s localhost:8080/contoh/data
-# [{"id":1,"nama":"Agung","pesan":"Halo dari data contoh","dibuatPada":"..."}, ...]
-
-curl -s -X POST localhost:8080/contoh/data \
-  -H 'Content-Type: application/json' \
-  -d '{"nama":"Dewi","pesan":"Halo dari POST"}'
-# {"id":4,"nama":"Dewi","pesan":"Halo dari POST","dibuatPada":"..."}
-```
-
-`Salam.catatanInternal` exists on the entity but is not part of `SalamDTO`, so it never reaches the
-client. `SalamRequest` only contains the fields a client may set; the mapper ignores `id`,
-`catatanInternal`, and `dibuatPada` when converting the request to an entity.
-
-Lombok is applied to every hand-written class where it removes boilerplate:
-
-- `domain/Salam` — `@Data`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`
-- `GreetingResource`, `DataResource` — `@JBossLog` for the logger
-- `DataResource`, `SalamService` — `@RequiredArgsConstructor` for constructor injection
-- `SalamService` — `@PostConstruct` seeds the sample data after the generated constructor runs
-
-There is nothing for Lombok to generate in the record DTOs, the MapStruct interface, or the tests,
-so those stay plain Java.
-
-Lombok is declared as `compileOnly` and both Lombok and MapStruct run only at compile time
-(`annotationProcessor`). The `lombok-mapstruct-binding` processor must run between them so MapStruct
-can see Lombok's generated builder/getters. Because no reflection or runtime processing is involved,
-these classes work in a native image without extra configuration.
-
-## Database (Hibernate ORM, PostgreSQL, Flyway)
-
-The app uses Hibernate ORM (plain JPA), the PostgreSQL JDBC driver, and Flyway for schema
-migrations. Start the database from `compose.yml` before running the app or the tests:
-
-```shell script
-docker compose up -d postgres
-```
+## Database
 
 The datasource defaults match `compose.yml` and can be overridden with environment variables:
 
@@ -128,40 +35,44 @@ The datasource defaults match `compose.yml` and can be overridden with environme
 | `DB_USERNAME` | `admin` |
 | `DB_PASSWORD` | `admin` |
 
-Flyway runs at startup and reads migrations from `src/main/resources/db/migration`
-(`V1__create_salam_table.sql` creates the `salam` table). Hibernate uses
-`schema-management.strategy=validate`, so a mapping that drifts from the migrated schema fails
-fast. Add new changes as versioned migrations instead of letting Hibernate create the schema.
+Flyway reads migrations from `src/main/resources/db/migration` (currently empty).
+Hibernate uses `schema-management.strategy=validate`, so the mapping must match the migrated
+schema. Add schema changes as versioned migrations (`V1__...sql`, `V2__...sql`, ...); never let
+Hibernate create or update the schema.
 
-`domain/Salam` is mapped to the `salam` table, but the sample `SalamService` still keeps its data
-in memory, so the API behaves exactly as before.
+## API documentation
 
-## Creating a native executable
+The OpenAPI document is generated from JAX-RS and MicroProfile OpenAPI annotations.
 
-You can create a native executable using:
+| URL | Description |
+| --- | --- |
+| <http://localhost:8080/q/swagger-ui> | Interactive Swagger UI |
+| <http://localhost:8080/q/openapi> | OpenAPI document (YAML; `?format=json` for JSON) |
 
-```shell script
-./gradlew build -Dquarkus.native.enabled=true
+With no resources defined yet, the document contains only the API info metadata.
+
+## Build
+
+```shell
+./gradlew test                                  # unit/integration tests, needs PostgreSQL
+./gradlew build                                 # build + test
+./gradlew build -Dquarkus.native.enabled=true   # native executable (GraalVM/Mandrel)
 ```
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
+The JVM build produces `build/quarkus-app/quarkus-run.jar`. The native build produces
+`build/*-runner`. Native integration tests (`*IT`) live in `src/native-test`.
 
-```shell script
-./gradlew build -Dquarkus.native.enabled=true -Dquarkus.native.container-build=true
+## Project layout
+
+```text
+src/main/java/id/my/agungdh/
+├── domain/      # JPA entities
+├── dto/         # immutable record DTOs
+├── mapper/      # MapStruct mappers
+├── repository/  # database access
+├── resource/    # JAX-RS resources (HTTP only)
+└── service/     # business logic and transactions
 ```
 
-You can then execute your native executable with: `./build/simonjp-1.0.0-SNAPSHOT-runner`
-
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/gradle-tooling>.
-
-## Related Guides
-
-- REST ([guide](https://quarkus.io/guides/rest)): Build RESTful web services and APIs using Jakarta REST (formerly JAX-RS)
-
-## Provided Code
-
-### REST
-
-Easily start your REST Web Services
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+The directories are created as code is added. Layer dependencies and database conventions are
+documented in [`AGENTS.md`](AGENTS.md).
