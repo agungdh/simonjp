@@ -9,7 +9,7 @@ REST API built with Quarkus. Available modules: **bidang** master data,
 - REST: `quarkus-rest` + `quarkus-rest-jackson`
 - Validation: `quarkus-hibernate-validator`
 - OpenAPI: `quarkus-smallrye-openapi` + `quarkus-swagger-ui`
-- Persistence: Hibernate ORM (JPA), PostgreSQL, Flyway
+- Persistence: Hibernate ORM with Panache, PostgreSQL, Flyway
 - Lombok (compile-time) + MapStruct
 
 ## Running in dev mode

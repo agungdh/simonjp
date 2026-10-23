@@ -5,6 +5,8 @@ import java.util.UUID;
 
 import org.hibernate.annotations.SQLRestriction;
 
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
@@ -26,7 +28,7 @@ import lombok.Setter;
 @MappedSuperclass
 @EntityListeners(AuditListener.class)
 @SQLRestriction("deleted_at IS NULL")
-public abstract class BaseEntity {
+public abstract class BaseEntity extends PanacheEntityBase {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -25,8 +25,8 @@ dependencies {
     implementation("io.quarkus:quarkus-smallrye-openapi")
     implementation("io.quarkus:quarkus-swagger-ui")
 
-    // Database: Hibernate ORM, PostgreSQL driver, dan schema migration dengan Flyway.
-    implementation("io.quarkus:quarkus-hibernate-orm")
+    // Database: Hibernate ORM with Panache, PostgreSQL driver, dan schema migration dengan Flyway.
+    implementation("io.quarkus:quarkus-hibernate-orm-panache")
     implementation("io.quarkus:quarkus-jdbc-postgresql")
     implementation("io.quarkus:quarkus-flyway")
     // Flyway 10+ memisahkan dukungan tiap database ke modul sendiri.
