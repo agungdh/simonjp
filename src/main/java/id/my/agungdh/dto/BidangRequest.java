@@ -9,5 +9,5 @@ import jakarta.validation.constraints.Size;
 public record BidangRequest(
         @NotBlank(message = "bidang wajib diisi")
         @Size(max = 255, message = "bidang maksimal 255 karakter")
-        @Schema(description = "Nama bidang.", example = "BIDANG INVESTIGASI", required = true) String bidang) {
+        @Schema(description = "Nama bidang.", examples = {"BIDANG INVESTIGASI"}, required = true) String bidang) {
 }

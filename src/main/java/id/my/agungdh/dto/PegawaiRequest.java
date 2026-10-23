@@ -18,17 +18,17 @@ public record PegawaiRequest(
         @NotBlank(message = "nip wajib diisi")
         @Pattern(regexp = "^[0-9]+$", message = "nip hanya boleh berisi angka")
         @Size(max = 30, message = "nip maksimal 30 karakter")
-        @Schema(description = "NIP pegawai, hanya angka.", example = "198001012005011001", required = true) String nip,
+        @Schema(description = "NIP pegawai, hanya angka.", examples = {"198001012005011001"}, required = true) String nip,
 
         @NotBlank(message = "nama wajib diisi")
         @Size(max = 255, message = "nama maksimal 255 karakter")
-        @Schema(description = "Nama pegawai.", example = "Budi Santoso", required = true) String nama,
+        @Schema(description = "Nama pegawai.", examples = {"Budi Santoso"}, required = true) String nama,
 
         @NotNull(message = "tipe wajib diisi")
-        @Schema(description = "Tipe pegawai.", example = "PEGAWAI", required = true) TipePegawai tipe,
+        @Schema(description = "Tipe pegawai.", examples = {"PEGAWAI"}, required = true) TipePegawai tipe,
 
         @NotNull(message = "status wajib diisi")
-        @Schema(description = "Status pegawai.", example = "AKTIF", required = true) StatusPegawai status,
+        @Schema(description = "Status pegawai.", examples = {"AKTIF"}, required = true) StatusPegawai status,
 
         @NotNull(message = "bidangUuid wajib diisi")
         @Schema(description = "UUID bidang tempat pegawai bertugas.", required = true) UUID bidangUuid,
@@ -36,7 +36,7 @@ public record PegawaiRequest(
         @Schema(description = "UUID pangkat golongan; null jika tidak ada.") UUID pangkatGolonganUuid,
 
         @Size(max = 255, message = "jabatan maksimal 255 karakter")
-        @Schema(description = "Jabatan pegawai.", example = "Auditor") String jabatan,
+        @Schema(description = "Jabatan pegawai.", examples = {"Auditor"}) String jabatan,
 
         @Size(max = 255, message = "peran maksimal 255 karakter")
         @Schema(description = "Peran pegawai.") String peran,

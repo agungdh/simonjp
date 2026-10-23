@@ -9,17 +9,17 @@ import jakarta.validation.constraints.Size;
 public record PangkatGolonganRequest(
         @NotBlank(message = "jenjang wajib diisi")
         @Size(max = 50, message = "jenjang maksimal 50 karakter")
-        @Schema(description = "Jenjang kepangkatan.", example = "Penata", required = true) String jenjang,
+        @Schema(description = "Jenjang kepangkatan.", examples = {"Penata"}, required = true) String jenjang,
 
         @NotBlank(message = "pangkat wajib diisi")
         @Size(max = 100, message = "pangkat maksimal 100 karakter")
-        @Schema(description = "Nama pangkat.", example = "Penata Muda", required = true) String pangkat,
+        @Schema(description = "Nama pangkat.", examples = {"Penata Muda"}, required = true) String pangkat,
 
         @NotBlank(message = "golongan wajib diisi")
         @Size(max = 10, message = "golongan maksimal 10 karakter")
-        @Schema(description = "Golongan.", example = "III", required = true) String golongan,
+        @Schema(description = "Golongan.", examples = {"III"}, required = true) String golongan,
 
         @NotBlank(message = "ruang wajib diisi")
         @Size(max = 10, message = "ruang maksimal 10 karakter")
-        @Schema(description = "Ruang.", example = "a", required = true) String ruang) {
+        @Schema(description = "Ruang.", examples = {"a"}, required = true) String ruang) {
 }
