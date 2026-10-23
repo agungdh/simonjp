@@ -6,10 +6,10 @@ import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
-import id.my.agungdh.domain.enums.KategoriJabatan;
-import id.my.agungdh.domain.enums.KategoriKebutuhanJamPelatihan;
-import id.my.agungdh.domain.enums.StatusPegawai;
-import id.my.agungdh.domain.enums.TipePegawai;
+import id.my.agungdh.enums.KategoriJabatan;
+import id.my.agungdh.enums.KategoriKebutuhanJamPelatihan;
+import id.my.agungdh.enums.StatusPegawai;
+import id.my.agungdh.enums.TipePegawai;
 import id.my.agungdh.dto.CursorPageDTO;
 import id.my.agungdh.dto.PegawaiRequest;
 import id.my.agungdh.dto.PegawaiResponse;

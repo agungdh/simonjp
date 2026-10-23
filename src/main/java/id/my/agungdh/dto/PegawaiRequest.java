@@ -4,10 +4,10 @@ import java.util.UUID;
 
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
-import id.my.agungdh.domain.enums.KategoriJabatan;
-import id.my.agungdh.domain.enums.KategoriKebutuhanJamPelatihan;
-import id.my.agungdh.domain.enums.StatusPegawai;
-import id.my.agungdh.domain.enums.TipePegawai;
+import id.my.agungdh.enums.KategoriJabatan;
+import id.my.agungdh.enums.KategoriKebutuhanJamPelatihan;
+import id.my.agungdh.enums.StatusPegawai;
+import id.my.agungdh.enums.TipePegawai;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;

@@ -1,4 +1,4 @@
-package id.my.agungdh.domain.enums;
+package id.my.agungdh.enums;
 
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 

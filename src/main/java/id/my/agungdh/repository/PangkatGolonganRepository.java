@@ -1,5 +1,7 @@
 package id.my.agungdh.repository;
 
+import id.my.agungdh.domain.Pegawai;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -8,7 +10,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import id.my.agungdh.domain.PangkatGolongan;
-import id.my.agungdh.domain.Pegawai;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import io.quarkus.panache.common.Page;
 import io.quarkus.panache.common.Sort;

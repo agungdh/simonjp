@@ -1,5 +1,7 @@
 package id.my.agungdh.repository;
 
+import id.my.agungdh.domain.Pegawai;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -7,7 +9,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import id.my.agungdh.domain.Pegawai;
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import io.quarkus.panache.common.Page;
 import jakarta.enterprise.context.ApplicationScoped;

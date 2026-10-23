@@ -1,9 +1,9 @@
 package id.my.agungdh.domain;
 
-import id.my.agungdh.domain.enums.KategoriJabatan;
-import id.my.agungdh.domain.enums.KategoriKebutuhanJamPelatihan;
-import id.my.agungdh.domain.enums.StatusPegawai;
-import id.my.agungdh.domain.enums.TipePegawai;
+import id.my.agungdh.enums.KategoriJabatan;
+import id.my.agungdh.enums.KategoriKebutuhanJamPelatihan;
+import id.my.agungdh.enums.StatusPegawai;
+import id.my.agungdh.enums.TipePegawai;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
