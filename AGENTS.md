@@ -200,6 +200,8 @@ semakin lambat seiring halaman dan tidak cocok untuk infinite scroll.
   atau nomor halaman di cursor.
 - Query param: `cursor` (UUID, opsional), `limit` (default 20, maksimum 100), `sort`, dan `order`
   (`asc`/`desc`).
+- Kalau `sort` tidak dikirim, default `ORDER BY id DESC`; `order` default `desc`. `id` tetap
+  internal dan tidak diekspos ke client.
 - Saat `cursor` ada, service:
   1. load baris cursor berdasarkan `uuid` (lookup hash index);
   2. kalau tidak ada atau sudah soft-delete, kembalikan `400` cursor tidak valid — bukan `404`;
@@ -238,7 +240,7 @@ public record CursorPageDTO<T>(List<T> items, UUID nextCursor, boolean hasMore) 
 }
 ```
 
-Contoh keyset dengan default `ORDER BY id DESC`:
+Contoh keyset default (`sort` tidak dikirim → `ORDER BY id DESC`):
 
 ```sql
 SELECT ...
