@@ -3,18 +3,13 @@ package id.my.agungdh.simonjp.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
+import java.util.Map;
 
 public record ErrorResponse(
         @Schema(description = "Pesan error") String message,
-        @Schema(description = "Daftar error validasi per field; null jika bukan error validasi")
-        List<FieldError> errors
+        @Schema(description = "Map field -> daftar pesan error validasi; null jika bukan error validasi")
+        Map<String, List<String>> errors
 ) {
-    public record FieldError(
-            @Schema(description = "Nama field yang gagal validasi", example = "nama") String field,
-            @Schema(description = "Pesan error validasi", example = "must not be blank") String message
-    ) {
-    }
-
     public ErrorResponse(String message) {
         this(message, null);
     }

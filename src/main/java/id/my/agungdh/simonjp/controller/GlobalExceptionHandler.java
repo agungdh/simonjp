@@ -10,7 +10,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -33,9 +36,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
-        List<ErrorResponse.FieldError> errors = ex.getBindingResult().getFieldErrors().stream()
-                .map(e -> new ErrorResponse.FieldError(e.getField(), e.getDefaultMessage()))
-                .toList();
+        Map<String, List<String>> errors = ex.getBindingResult().getFieldErrors().stream()
+                .collect(Collectors.groupingBy(
+                        org.springframework.validation.FieldError::getField,
+                        LinkedHashMap::new,
+                        Collectors.mapping(org.springframework.validation.FieldError::getDefaultMessage, Collectors.toList())));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse("Validasi gagal", errors));
     }

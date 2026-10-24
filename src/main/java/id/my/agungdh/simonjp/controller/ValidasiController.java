@@ -37,13 +37,13 @@ public class ValidasiController {
                             examples = @ExampleObject(name = "validasi-gagal", value = """
                                     {
                                       "message": "Validasi gagal",
-                                      "errors": [
-                                        {"field": "nama", "message": "must not be blank"},
-                                        {"field": "email", "message": "must be a well-formed email address"},
-                                        {"field": "umur", "message": "must be greater than or equal to 17"},
-                                        {"field": "harga", "message": "must be greater than 0"},
-                                        {"field": "stok", "message": "must be greater than or equal to 0"}
-                                      ]
+                                      "errors": {
+                                        "nama": ["must not be blank", "size must be between 2 and 50"],
+                                        "email": ["must be a well-formed email address"],
+                                        "umur": ["must be greater than or equal to 17"],
+                                        "harga": ["must be greater than 0"],
+                                        "stok": ["must be greater than or equal to 0"]
+                                      }
                                     }
                                     """)))
     })
