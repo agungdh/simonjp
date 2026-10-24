@@ -1,3 +1,7 @@
+-- Pencarian substring (%kata%) memakai trigram. pg_trgm sudah trusted extension sejak
+-- PostgreSQL 13, jadi owner database bisa mengaktifkannya tanpa superuser.
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE TABLE bidang (
     id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     uuid        UUID NOT NULL,
@@ -77,6 +81,20 @@ CREATE INDEX idx_pegawai_pangkat_golongan_id ON pegawai (pangkat_golongan_id);
 
 -- NIP hanya unik untuk baris aktif, sehingga bisa dipakai ulang setelah soft delete.
 CREATE UNIQUE INDEX ux_pegawai_nip_active ON pegawai (lower(nip)) WHERE deleted_at IS NULL;
+
+-- Index trigram untuk search %kata%. Ekspresi lower(kolom) harus sama dengan query
+-- (lower(kolom) LIKE :pattern ESCAPE '!') supaya index benar-benar dipakai.
+CREATE INDEX idx_pegawai_nama_trgm
+    ON pegawai USING gin (lower(nama) gin_trgm_ops) WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_pegawai_nip_trgm
+    ON pegawai USING gin (lower(nip) gin_trgm_ops) WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_pegawai_email_trgm
+    ON pegawai USING gin (lower(email) gin_trgm_ops) WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_pegawai_jabatan_trgm
+    ON pegawai USING gin (lower(jabatan) gin_trgm_ops) WHERE deleted_at IS NULL;
 
 CREATE TABLE user_account (
     id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

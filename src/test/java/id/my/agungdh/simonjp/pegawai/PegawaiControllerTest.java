@@ -24,9 +24,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -259,11 +262,156 @@ class PegawaiControllerTest {
                 .andExpect(jsonPath("$.items[0].role").exists());
     }
 
+    @Test
+    void searchMatchesPartialNameCaseInsensitive() throws Exception {
+        String token = "Zulkifli" + UUID.randomUUID().toString().substring(0, 8);
+        String uuid = create(token + " Pratama", uniqueNip(), PASSWORD);
+
+        mvc.perform(get("/pegawai")
+                        .param("search", token.substring(0, 10).toUpperCase())
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].uuid", hasItem(uuid)));
+    }
+
+    @Test
+    void searchMatchesNipAndEmail() throws Exception {
+        String nip = uniqueNip();
+        String uuid = create(nip, PASSWORD);
+
+        mvc.perform(get("/pegawai")
+                        .param("search", nip.substring(3, 10))
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].uuid", hasItem(uuid)));
+
+        mvc.perform(get("/pegawai")
+                        .param("search", nip.toLowerCase() + "@example")
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].uuid", hasItem(uuid)));
+    }
+
+    @Test
+    void searchRejectsTermsOutsideLengthLimits() throws Exception {
+        mvc.perform(get("/pegawai")
+                        .param("search", "ab")
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Pencarian minimal 3 karakter"));
+
+        mvc.perform(get("/pegawai")
+                        .param("search", "a".repeat(101))
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Pencarian maksimal 100 karakter"));
+    }
+
+    @Test
+    void searchTreatsWildcardAsLiteral() throws Exception {
+        String token = "a%b" + UUID.randomUUID().toString().substring(0, 6);
+        String uuid = create(token, uniqueNip(), PASSWORD);
+
+        mvc.perform(get("/pegawai")
+                        .param("search", token)
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].uuid").value(uuid));
+    }
+
+    @Test
+    void searchCombinesWithStructuredFilters() throws Exception {
+        String token = "Filter" + UUID.randomUUID().toString().substring(0, 8);
+        String uuid = create(token, uniqueNip(), PASSWORD);
+
+        mvc.perform(get("/pegawai")
+                        .param("search", token)
+                        .param("status", "AKTIF")
+                        .param("bidangUuid", bidangUuid.toString())
+                        .param("kategoriJabatan", "FUNGSIONAL_AUDITOR")
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].uuid", hasItem(uuid)));
+
+        mvc.perform(get("/pegawai")
+                        .param("search", token)
+                        .param("status", "NON_AKTIF")
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
+    void searchDoesNotReturnSoftDeletedPegawai() throws Exception {
+        String token = "Terhapus" + UUID.randomUUID().toString().substring(0, 8);
+        String uuid = create(token, uniqueNip(), PASSWORD);
+
+        mvc.perform(delete("/pegawai/" + uuid)
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get("/pegawai")
+                        .param("search", token)
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
+    void cursorMustMatchActiveFilter() throws Exception {
+        String uuidA = create("Cursor A " + UUID.randomUUID(), uniqueNip(), PASSWORD);
+        create("Cursor B " + UUID.randomUUID(), uniqueNip(), PASSWORD);
+
+        mvc.perform(get("/pegawai")
+                        .param("search", "Cursor B")
+                        .param("cursor", uuidA)
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Cursor tidak valid"));
+    }
+
+    @Test
+    void cursorWithinSameFilterReturnsNextPage() throws Exception {
+        String token = "PageToken" + UUID.randomUUID().toString().substring(0, 6);
+        List<UUID> uuids = new ArrayList<>();
+        for (int i = 0; i < 21; i++) {
+            Pegawai pegawai = new Pegawai();
+            pegawai.setNama(token + " " + i);
+            pegawai.setNip(uniqueNip());
+            pegawai.setStatus(PegawaiStatus.AKTIF);
+            pegawaiRepository.save(pegawai);
+            uuids.add(pegawai.getUuid());
+        }
+
+        String firstPage = mvc.perform(get("/pegawai")
+                        .param("search", token)
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(20))
+                .andExpect(jsonPath("$.hasMore").value(true))
+                .andReturn().getResponse().getContentAsString();
+
+        String nextCursor = JsonPath.read(firstPage, "$.nextCursor");
+        mvc.perform(get("/pegawai")
+                        .param("search", token)
+                        .param("cursor", nextCursor)
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.hasMore").value(false))
+                .andExpect(jsonPath("$.items[0].uuid").value(uuids.get(0).toString()));
+    }
+
     private String create(String nip, String password) throws Exception {
+        return create("Pegawai " + nip, nip, password);
+    }
+
+    private String create(String nama, String nip, String password) throws Exception {
         MvcResult result = mvc.perform(post("/pegawai")
                         .header("Authorization", "Bearer " + adminBearer)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("Pegawai " + nip, nip, Role.PEGAWAI, password)))
+                        .content(body(nama, nip, Role.PEGAWAI, password)))
                 .andExpect(status().isCreated())
                 .andReturn();
         return JsonPath.read(result.getResponse().getContentAsString(), "$.uuid");

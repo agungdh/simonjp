@@ -12,6 +12,7 @@ import id.my.agungdh.simonjp.dto.PangkatGolonganRequest;
 import id.my.agungdh.simonjp.dto.PangkatGolonganResponse;
 import id.my.agungdh.simonjp.service.PangkatGolonganService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -40,13 +41,19 @@ public class PangkatGolonganController {
     private final PangkatGolonganService service;
 
     @GetMapping
-    @Operation(summary = "Daftar pangkat/golongan (cursor pagination)")
+    @Operation(summary = "Daftar pangkat/golongan (cursor pagination)",
+            description = "search = substring case-insensitive (3-100 karakter) pada "
+                    + "jenjang/pangkat/golongan/ruang.")
     @ApiResponse(responseCode = "200", description = "Daftar pangkat/golongan")
     @ApiInvalidCursor
     @ApiUnauthorized
     @ApiInternalError
-    public CursorPageDTO<PangkatGolonganResponse> list(@RequestParam(required = false) UUID cursor) {
-        return service.list(cursor);
+    public CursorPageDTO<PangkatGolonganResponse> list(
+            @Parameter(description = "Pencarian %kata% pada jenjang/pangkat/golongan/ruang")
+            @RequestParam(required = false) String search,
+            @Parameter(description = "Cursor UUID baris terakhir halaman sebelumnya")
+            @RequestParam(required = false) UUID cursor) {
+        return service.list(cursor, search);
     }
 
     @PostMapping

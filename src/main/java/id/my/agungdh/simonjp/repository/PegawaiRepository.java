@@ -6,11 +6,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface PegawaiRepository extends JpaRepository<Pegawai, Long> {
+public interface PegawaiRepository extends JpaRepository<Pegawai, Long>, PegawaiRepositoryCustom {
 
     Optional<Pegawai> findByUuid(UUID uuid);
 
@@ -29,8 +28,4 @@ public interface PegawaiRepository extends JpaRepository<Pegawai, Long> {
     /** Pegawai milik akun yang sedang login; dipakai endpoint {@code /profile}. */
     @EntityGraph(attributePaths = {"bidang", "pangkatGolongan", "account"})
     Optional<Pegawai> findByAccountId(Long accountId);
-
-    @EntityGraph(attributePaths = {"bidang", "pangkatGolongan", "account"})
-    @Query("SELECT p FROM Pegawai p WHERE (:cursorId IS NULL OR p.id < :cursorId) ORDER BY p.id DESC")
-    List<Pegawai> findPage(@Param("cursorId") Long cursorId, org.springframework.data.domain.Pageable pageable);
 }

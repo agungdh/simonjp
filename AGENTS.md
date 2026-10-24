@@ -239,6 +239,25 @@ CREATE INDEX idx_contoh_induk_id ON contoh (induk_id);
 CREATE UNIQUE INDEX ux_contoh_nama_active ON contoh (lower(nama)) WHERE deleted_at IS NULL;
 ```
 
+### Search indexes (pg_trgm)
+
+Substring search (`%kata%`) is backed by `pg_trgm`; a plain btree cannot serve an unanchored
+`LIKE '%...%'`.
+
+- Enable the extension in the schema migration: `CREATE EXTENSION IF NOT EXISTS pg_trgm;`. `pg_trgm`
+  is a trusted extension since PostgreSQL 13, so the database owner can create it without superuser.
+- Index the same expression the query uses, with GIN and a partial predicate:
+  `CREATE INDEX idx_pegawai_nama_trgm ON pegawai USING gin (lower(nama) gin_trgm_ops) WHERE deleted_at IS NULL;`.
+- Query with `lower(column) LIKE :pattern ESCAPE '!'` (not `ILIKE`) so the expression matches the
+  index. `SearchTerm` builds the escaped `%...%` pattern; the escape character `!` must stay in sync
+  with the repository queries.
+- Do not add `coalesce` around a nullable text column: `NULL LIKE ...` evaluates to `NULL` and does
+  not match, which is the desired behavior.
+- Only large tables need trigram indexes. Small master tables (`bidang`, `pangkat_golongan`) can keep
+  a seq scan.
+- Composite indexes such as `(filter_col, id DESC) WHERE deleted_at IS NULL` are added only after
+  `EXPLAIN` proves they are needed, not preemptively.
+
 ### Naming
 
 - **Tables: singular**, snake_case: `order_item`, `user_role`. Do not use plural forms (`users`,
@@ -249,7 +268,8 @@ CREATE UNIQUE INDEX ux_contoh_nama_active ON contoh (lower(nama)) WHERE deleted_
 - **Entities: PascalCase singular** (`OrderItem`) with an explicit `@Table(name = "order_item")`.
 - **DTOs/JSON: camelCase** (`indukUuid`, `nomorTelepon`).
 - **Indexes/constraints**: `pk_<table>`, `fk_<table>_<column>`, `ux_<table>_<column>`,
-  `idx_<table>_<column>`; unique indexes that only apply to active rows use the `_active` suffix.
+  `idx_<table>_<column>`; unique indexes that only apply to active rows use the `_active` suffix;
+  trigram indexes add a `_trgm` suffix (`idx_pegawai_nama_trgm`).
 
 ### Derived rules
 
@@ -314,6 +334,30 @@ and predictability.
   response status line, so do not duplicate it in the body (e.g. `ErrorResponse` has `message` and
   optional `fields`). Validation errors are grouped per field and may contain more than one entry
   per field.
+
+### Search & filtering
+
+List endpoints accept an optional `search` query param with **case-insensitive substring**
+semantics (`%kata%`), not prefix or full-text search:
+
+- `search` is trimmed; missing/blank means no filter.
+- 1–2 characters → `400 "Pencarian minimal 3 karakter"`; more than 100 → `400 "Pencarian maksimal
+  100 karakter"`. The minimum exists because a trigram needs 3 characters; below that the GIN index
+  cannot narrow the scan.
+- Input is literal: `%`, `_`, and the escape character are escaped, so typing `%` does not match
+  everything.
+- Search matches the endpoint's text columns: `pegawai` (`nama`, `nip`, `email`, `jabatan`), `bidang`
+  (`nama`, `deskripsi`), and `pangkat-golongan` (`jenjang`, `pangkat`, `golongan`, `ruang`).
+- Structured filters are exact and combined with **AND**; `search` itself is an **OR** across its
+  columns. `GET /pegawai` currently supports `status`, `bidangUuid`, `pangkatGolonganUuid`,
+  `kategoriJabatan`, and `kategoriKebutuhanJamPelatihan`.
+- Validate `search` in the service (`SearchTerm`), not with `@Size` on the controller, so the error
+  keeps the `ErrorResponse` shape without adding a new exception handler.
+- Build dynamic predicates with the Criteria API in a repository fragment
+  (`PegawaiRepositoryCustom`/`PegawaiRepositoryImpl`) instead of `:param IS NULL OR ...`; the
+  `OR :param IS NULL` form can make PostgreSQL choose a generic plan that forces a seq scan.
+- A cursor is only valid for the same filter combination; if the cursor row does not match the
+  active `search`/filters, return `400 "Cursor tidak valid"`.
 
 ### Swagger / OpenAPI operation order
 
@@ -381,7 +425,8 @@ need, as a separate endpoint — never tucked into the list response.
 - Fetch `limit + 1` rows to determine `hasMore`, then drop the extra row. `nextCursor` is the `uuid`
   of the last row actually returned, or `null` when there is nothing more.
 - Filters must also be applied when looking up the cursor; never use the position of a row that the
-  current filter cannot see.
+  current filter cannot see. When `search` is active, validate the cursor with the same term
+  (`SearchTerm.matches`) before using its `id`; checking existence alone is not enough.
 - Because `uuid` is not unique in the database, never use `getSingleResult()` for the cursor
   lookup; fetch one row deterministically (`ORDER BY id LIMIT 1`) or handle duplicates.
 - `sort` only accepts whitelisted fields; never interpolate column names from the request into
@@ -498,3 +543,7 @@ partial index `(deleted_at) WHERE deleted_at IS NOT NULL`.
 16. **Cookie requests require CSRF; bearer requests do not.** The frontend reads the CSRF token from
     the body of `GET /auth/csrf` (cross-subdomain JavaScript cannot read the API cookie) and sends it
     as `X-XSRF-TOKEN`. Do not disable CSRF globally to make Swagger or a client simpler.
+17. **Search is a case-insensitive substring filter backed by pg_trgm.** `search` is trimmed, limited
+    to 3–100 characters, and escaped (literal `%`/`_`). Use `lower(column) LIKE :pattern ESCAPE '!'`
+    against partial GIN trigram indexes; do not use `ILIKE`, `:param IS NULL OR ...`, or full-text
+    search for this contract. Details in the REST conventions and search index sections above.

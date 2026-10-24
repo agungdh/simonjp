@@ -27,4 +27,21 @@ public interface PangkatGolonganRepository extends JpaRepository<PangkatGolongan
     @Query("SELECT pg FROM PangkatGolongan pg WHERE (:cursorId IS NULL OR pg.id < :cursorId) ORDER BY pg.id DESC")
     List<PangkatGolongan> findPage(@Param("cursorId") Long cursorId,
                                    org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * Pencarian substring case-insensitive. Pattern sudah di-escape oleh service dan memakai
+     * escape char {@code '!'}.
+     */
+    @Query("""
+            SELECT pg FROM PangkatGolongan pg
+            WHERE (:cursorId IS NULL OR pg.id < :cursorId)
+              AND (lower(pg.jenjang) LIKE :pattern ESCAPE '!'
+                   OR lower(pg.pangkat) LIKE :pattern ESCAPE '!'
+                   OR lower(pg.golongan) LIKE :pattern ESCAPE '!'
+                   OR lower(pg.ruang) LIKE :pattern ESCAPE '!')
+            ORDER BY pg.id DESC
+            """)
+    List<PangkatGolongan> searchPage(@Param("pattern") String pattern,
+                                     @Param("cursorId") Long cursorId,
+                                     org.springframework.data.domain.Pageable pageable);
 }

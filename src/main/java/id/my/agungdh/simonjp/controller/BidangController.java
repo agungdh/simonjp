@@ -10,6 +10,7 @@ import id.my.agungdh.simonjp.dto.BidangResponse;
 import id.my.agungdh.simonjp.dto.CursorPageDTO;
 import id.my.agungdh.simonjp.service.BidangService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -37,12 +38,17 @@ public class BidangController {
     private final BidangService service;
 
     @GetMapping
-    @Operation(summary = "Daftar bidang (cursor pagination)")
+    @Operation(summary = "Daftar bidang (cursor pagination)",
+            description = "search = substring case-insensitive (3-100 karakter) pada nama/deskripsi.")
     @ApiResponse(responseCode = "200", description = "Daftar bidang")
     @ApiInvalidCursor
     @ApiInternalError
-    public CursorPageDTO<BidangResponse> list(@RequestParam(required = false) UUID cursor) {
-        return service.list(cursor);
+    public CursorPageDTO<BidangResponse> list(
+            @Parameter(description = "Pencarian %kata% pada nama/deskripsi")
+            @RequestParam(required = false) String search,
+            @Parameter(description = "Cursor UUID baris terakhir halaman sebelumnya")
+            @RequestParam(required = false) UUID cursor) {
+        return service.list(cursor, search);
     }
 
     @PostMapping

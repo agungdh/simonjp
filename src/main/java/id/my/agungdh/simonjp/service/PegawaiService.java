@@ -1,8 +1,11 @@
 package id.my.agungdh.simonjp.service;
 
 import id.my.agungdh.simonjp.domain.Bidang;
+import id.my.agungdh.simonjp.domain.KategoriJabatan;
+import id.my.agungdh.simonjp.domain.KategoriKebutuhanJamPelatihan;
 import id.my.agungdh.simonjp.domain.PangkatGolongan;
 import id.my.agungdh.simonjp.domain.Pegawai;
+import id.my.agungdh.simonjp.domain.PegawaiStatus;
 import id.my.agungdh.simonjp.domain.Role;
 import id.my.agungdh.simonjp.domain.UserAccount;
 import id.my.agungdh.simonjp.dto.CursorPageDTO;
@@ -11,12 +14,11 @@ import id.my.agungdh.simonjp.dto.PegawaiResponse;
 import id.my.agungdh.simonjp.mapper.PegawaiMapper;
 import id.my.agungdh.simonjp.repository.BidangRepository;
 import id.my.agungdh.simonjp.repository.PangkatGolonganRepository;
+import id.my.agungdh.simonjp.repository.PegawaiFilter;
 import id.my.agungdh.simonjp.repository.PegawaiRepository;
 import id.my.agungdh.simonjp.repository.UserAccountRepository;
 import id.my.agungdh.simonjp.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -99,20 +101,59 @@ public class PegawaiService {
     }
 
     @Transactional(readOnly = true)
-    public CursorPageDTO<PegawaiResponse> list(UUID cursor) {
+    public CursorPageDTO<PegawaiResponse> list(UUID cursor, String search, PegawaiStatus status,
+                                               UUID bidangUuid, UUID pangkatGolonganUuid,
+                                               KategoriJabatan kategoriJabatan,
+                                               KategoriKebutuhanJamPelatihan kategoriKebutuhanJamPelatihan) {
+        SearchTerm term = SearchTerm.of(search);
+        PegawaiFilter filter = new PegawaiFilter(
+                term == null ? null : term.pattern(),
+                status,
+                bidangUuid,
+                pangkatGolonganUuid,
+                kategoriJabatan,
+                kategoriKebutuhanJamPelatihan);
+
         int size = PAGE_SIZE;
         Long cursorId = null;
         if (cursor != null) {
-            Pegawai cursorEntity = repository.findByUuid(cursor)
+            Pegawai cursorEntity = repository.findWithRelationsByUuid(cursor)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cursor tidak valid"));
+            // Cursor hanya valid untuk kombinasi filter yang sama.
+            if (!matchesFilter(term, filter, cursorEntity)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cursor tidak valid");
+            }
             cursorId = cursorEntity.getId();
         }
-        List<Pegawai> rows = repository.findPage(cursorId, PageRequest.of(0, size + 1, Sort.by(Sort.Direction.DESC, "id")));
+        List<Pegawai> rows = repository.findPage(filter, cursorId, size + 1);
         boolean hasMore = rows.size() > size;
         List<Pegawai> items = hasMore ? rows.subList(0, size) : rows;
         UUID nextCursor = (hasMore && !items.isEmpty()) ? items.get(items.size() - 1).getUuid() : null;
         List<PegawaiResponse> responses = items.stream().map(mapper::toResponse).toList();
         return new CursorPageDTO<>(responses, nextCursor, hasMore);
+    }
+
+    private boolean matchesFilter(SearchTerm term, PegawaiFilter filter, Pegawai pegawai) {
+        if (term != null && !term.matchesAny(pegawai.getNama(), pegawai.getNip(),
+                pegawai.getEmail(), pegawai.getJabatan())) {
+            return false;
+        }
+        if (filter.status() != null && filter.status() != pegawai.getStatus()) {
+            return false;
+        }
+        if (filter.bidangUuid() != null
+                && (pegawai.getBidang() == null || !filter.bidangUuid().equals(pegawai.getBidang().getUuid()))) {
+            return false;
+        }
+        if (filter.pangkatGolonganUuid() != null && (pegawai.getPangkatGolongan() == null
+                || !filter.pangkatGolonganUuid().equals(pegawai.getPangkatGolongan().getUuid()))) {
+            return false;
+        }
+        if (filter.kategoriJabatan() != null && filter.kategoriJabatan() != pegawai.getKategoriJabatan()) {
+            return false;
+        }
+        return filter.kategoriKebutuhanJamPelatihan() == null
+                || filter.kategoriKebutuhanJamPelatihan() == pegawai.getKategoriKebutuhanJamPelatihan();
     }
 
     private void validateNipAvailable(String nip, UUID selfUuid) {

@@ -67,15 +67,23 @@ public class BidangService {
     }
 
     @Transactional(readOnly = true)
-    public CursorPageDTO<BidangResponse> list(UUID cursor) {
+    public CursorPageDTO<BidangResponse> list(UUID cursor, String search) {
+        SearchTerm term = SearchTerm.of(search);
         int size = PAGE_SIZE;
+        PageRequest pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.DESC, "id"));
         Long cursorId = null;
         if (cursor != null) {
             Bidang cursorEntity = repository.findByUuid(cursor)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cursor tidak valid"));
+            // Cursor hanya valid untuk filter pencarian yang sama.
+            if (term != null && !term.matchesAny(cursorEntity.getNama(), cursorEntity.getDeskripsi())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cursor tidak valid");
+            }
             cursorId = cursorEntity.getId();
         }
-        List<Bidang> rows = repository.findPage(cursorId, PageRequest.of(0, size + 1, Sort.by(Sort.Direction.DESC, "id")));
+        List<Bidang> rows = term == null
+                ? repository.findPage(cursorId, pageable)
+                : repository.searchPage(term.pattern(), cursorId, pageable);
         boolean hasMore = rows.size() > size;
         List<Bidang> items = hasMore ? rows.subList(0, size) : rows;
         UUID nextCursor = (hasMore && !items.isEmpty()) ? items.get(items.size() - 1).getUuid() : null;

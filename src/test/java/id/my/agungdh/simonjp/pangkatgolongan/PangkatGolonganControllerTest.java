@@ -130,6 +130,27 @@ class PangkatGolonganControllerTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void searchMatchesPartialJenjangCaseInsensitive() throws Exception {
+        String token = "Jenjang" + UUID.randomUUID().toString().substring(0, 8);
+        String uuid = create(token, "Pangkat " + UUID.randomUUID(), "III", "a");
+
+        mvc.perform(get("/pangkat-golongan")
+                        .param("search", token.substring(0, 10).toUpperCase())
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].uuid").value(uuid));
+    }
+
+    @Test
+    void searchRejectsTooShortTerm() throws Exception {
+        mvc.perform(get("/pangkat-golongan")
+                        .param("search", "ab")
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Pencarian minimal 3 karakter"));
+    }
+
     private String create(String jenjang, String pangkat, String golongan, String ruang) throws Exception {
         MvcResult result = mvc.perform(post("/pangkat-golongan")
                         .header("Authorization", "Bearer " + adminBearer)
