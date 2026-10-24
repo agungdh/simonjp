@@ -58,8 +58,8 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public CursorPageDTO<ProductResponse> list(UUID cursor, int limit) {
-        int size = Math.min(Math.max(limit, 1), 100);
+    public CursorPageDTO<ProductResponse> list(UUID cursor) {
+        int size = 20;
         Long cursorId = null;
         if (cursor != null) {
             Product cursorEntity = repository.findByUuid(cursor)

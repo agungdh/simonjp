@@ -244,8 +244,8 @@ need, as a separate endpoint — never tucked into the list response.
 
 - The only cursor exposed to clients is the `uuid` of the last row. Never send `id`, an offset, or a
   page number in the cursor.
-- Query params: `cursor` (UUID, optional), `limit` (default 20, maximum 100), `sort`, and `order`
-  (`asc`/`desc`).
+- Query params: `cursor` (UUID, optional), `sort`, and `order`
+  (`asc`/`desc`). `limit` is fixed at 20 and is not client-configurable.
 - When `sort` is not sent, default to `ORDER BY id DESC`; `order` defaults to `desc`. `id` stays
   internal and is not exposed to clients.
 - When `cursor` is present, the service:

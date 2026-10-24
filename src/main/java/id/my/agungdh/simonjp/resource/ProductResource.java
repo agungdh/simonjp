@@ -59,9 +59,7 @@ public class ProductResource {
 
     @GetMapping
     @Operation(summary = "Daftar produk (cursor pagination)")
-    public CursorPageDTO<ProductResponse> list(
-            @RequestParam(required = false) UUID cursor,
-            @RequestParam(defaultValue = "20") int limit) {
-        return service.list(cursor, limit);
+    public CursorPageDTO<ProductResponse> list(@RequestParam(required = false) UUID cursor) {
+        return service.list(cursor);
     }
 }
