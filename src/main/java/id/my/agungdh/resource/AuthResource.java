@@ -1,15 +1,19 @@
 package id.my.agungdh.resource;
 
+import java.time.Duration;
 import java.util.Map;
+import java.util.Set;
 
+import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
 import id.my.agungdh.domain.AppUser;
 import id.my.agungdh.dto.LoginRequest;
 import id.my.agungdh.service.AppUserService;
-import id.my.agungdh.service.SessionService;
 import io.smallrye.common.annotation.RunOnVirtualThread;
+import io.smallrye.jwt.build.Jwt;
+import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
@@ -22,22 +26,26 @@ import jakarta.ws.rs.core.Cookie;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import lombok.RequiredArgsConstructor;
 
 @Path("/")
 @RunOnVirtualThread
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Tag(name = "Auth", description = "Autentikasi berbasis cookie + session Redis.")
+@Tag(name = "Auth", description = "Autentikasi JWT di cookie.")
 @RequiredArgsConstructor(onConstructor_ = @Inject)
 public class AuthResource {
 
     private final AppUserService appUserService;
-    private final SessionService sessionService;
+
+    @Inject
+    SecurityContext securityContext;
 
     @POST
     @Path("/login")
-    @Operation(summary = "Login, set cookie session.")
+    @PermitAll
+    @Operation(summary = "Login, set cookie SESSION (JWT).")
     public Response login(@Valid LoginRequest request) {
         AppUser user = appUserService.findByUsername(request.username());
         if (!appUserService.verifyPassword(user, request.password())) {
@@ -46,7 +54,12 @@ public class AuthResource {
                     .build();
         }
 
-        String token = sessionService.create(user.getUsername());
+        String token = Jwt.upn(user.getUsername())
+                .groups(user.getRole().name())
+                .issuer("simonjp")
+                .expiresIn(Duration.ofHours(24))
+                .sign();
+
         NewCookie cookie = new NewCookie.Builder("SESSION")
                 .value(token)
                 .path("/")
@@ -66,11 +79,9 @@ public class AuthResource {
 
     @POST
     @Path("/logout")
-    @Operation(summary = "Logout, hapus session.")
-    public Response logout(@CookieParam("SESSION") Cookie sessionCookie) {
-        String token = (sessionCookie == null) ? null : sessionCookie.getValue();
-        sessionService.delete(token);
-
+    @PermitAll
+    @Operation(summary = "Logout, hapus cookie.")
+    public Response logout() {
         NewCookie cleared = new NewCookie.Builder("SESSION")
                 .value("")
                 .path("/")
@@ -79,31 +90,23 @@ public class AuthResource {
                 .maxAge(0)
                 .sameSite(NewCookie.SameSite.LAX)
                 .build();
-
         return Response.ok(Map.of("message", "Logged out.")).cookie(cleared).build();
     }
 
     @GET
     @Path("/user")
     @Operation(summary = "Info user yang sedang login.")
-    public Response me(@CookieParam("SESSION") Cookie sessionCookie) {
-        String token = (sessionCookie == null) ? null : sessionCookie.getValue();
-        String username = sessionService.findUsername(token);
-        if (username == null) {
+    public Response me() {
+        if (securityContext.getUserPrincipal() == null) {
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(Map.of("message", "Belum login."))
                     .build();
         }
-        AppUser user = appUserService.findByUsername(username);
-        if (user == null) {
-            return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity(Map.of("message", "Session tidak valid."))
-                    .build();
-        }
         return Response.ok(Map.of(
-                "username", user.getUsername(),
-                "role", user.getRole().name(),
-                "uuid", user.getUuid()))
+                "username", securityContext.getUserPrincipal().getName(),
+                "roles", securityContext.getUserPrincipal() instanceof JsonWebToken
+                        ? ((JsonWebToken) securityContext.getUserPrincipal()).getGroups()
+                        : Set.of()))
                 .build();
     }
 }

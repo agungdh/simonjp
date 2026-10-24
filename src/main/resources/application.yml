@@ -4,13 +4,11 @@ quarkus:
     info-version: 1.0.0
     info-description: REST API SimonJP.
   swagger-ui:
-    # Tetap tersedia juga di build production/native, bukan hanya dev mode.
     always-include: true
     path: /q/swagger-ui
 
   datasource:
     db-kind: postgresql
-    # Nilai default cocok dengan compose.yml; override lewat environment variable.
     username: "${DB_USERNAME:admin}"
     password: "${DB_PASSWORD:admin}"
     jdbc:
@@ -18,7 +16,6 @@ quarkus:
 
   hibernate-orm:
     schema-management:
-      # Skema dikelola Flyway, jadi Hibernate hanya memvalidasi mapping terhadap skema.
       strategy: validate
 
   flyway:
@@ -27,3 +24,41 @@ quarkus:
 
   redis:
     hosts: "${REDIS_URL:redis://:admin@127.0.0.1:6379}"
+
+  http:
+    auth:
+      permission:
+        public:
+          paths: /login,/healthcheck,/q/*,/openapi
+          policy: permit
+        authenticated:
+          paths: /*
+          policy: authenticated
+
+# MicroProfile JWT verification
+mp:
+  jwt:
+    verify:
+      publickey:
+        location: publicKey.pem
+      issuer: simonjp
+    token:
+      header: Cookie
+      cookie: SESSION
+
+# SmallRye JWT signing
+smallrye:
+  jwt:
+    sign:
+      key:
+        location: privateKey.pem
+    new-token:
+      issuer: simonjp
+
+"%test":
+  quarkus:
+    http:
+      auth:
+        permission:
+          authenticated:
+            policy: permit
