@@ -1,9 +1,11 @@
 package id.my.agungdh.simonjp.controller;
 
 import id.my.agungdh.simonjp.config.ApiBadRequest;
+import id.my.agungdh.simonjp.config.ApiForbidden;
 import id.my.agungdh.simonjp.config.ApiInternalError;
 import id.my.agungdh.simonjp.config.ApiInvalidCursor;
 import id.my.agungdh.simonjp.config.ApiNotFound;
+import id.my.agungdh.simonjp.config.ApiUnauthorized;
 import id.my.agungdh.simonjp.config.ApiValidationError;
 import id.my.agungdh.simonjp.dto.BidangRequest;
 import id.my.agungdh.simonjp.dto.BidangResponse;
@@ -17,6 +19,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -42,6 +45,7 @@ public class BidangController {
             description = "search = substring case-insensitive (3-100 karakter) pada nama/deskripsi.")
     @ApiResponse(responseCode = "200", description = "Daftar bidang")
     @ApiInvalidCursor
+    @ApiUnauthorized
     @ApiInternalError
     public CursorPageDTO<BidangResponse> list(
             @Parameter(description = "Pencarian %kata% pada nama/deskripsi")
@@ -52,9 +56,12 @@ public class BidangController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Buat bidang baru")
     @ApiResponse(responseCode = "201", description = "Bidang dibuat")
     @ApiValidationError
+    @ApiUnauthorized
+    @ApiForbidden
     @ApiInternalError
     public ResponseEntity<BidangResponse> create(@Valid @RequestBody BidangRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
@@ -64,6 +71,7 @@ public class BidangController {
     @Operation(summary = "Ambil bidang berdasarkan UUID")
     @ApiResponse(responseCode = "200", description = "Bidang ditemukan")
     @ApiBadRequest
+    @ApiUnauthorized
     @ApiNotFound
     @ApiInternalError
     public BidangResponse get(@PathVariable UUID uuid) {
@@ -71,9 +79,12 @@ public class BidangController {
     }
 
     @PutMapping("/{uuid}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Perbarui bidang (full replace)")
     @ApiResponse(responseCode = "200", description = "Bidang diperbarui")
     @ApiValidationError
+    @ApiUnauthorized
+    @ApiForbidden
     @ApiNotFound
     @ApiInternalError
     public BidangResponse update(@PathVariable UUID uuid, @Valid @RequestBody BidangRequest request) {
@@ -81,9 +92,12 @@ public class BidangController {
     }
 
     @DeleteMapping("/{uuid}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Hapus bidang (soft delete)")
     @ApiResponse(responseCode = "204", description = "Bidang dihapus")
     @ApiBadRequest
+    @ApiUnauthorized
+    @ApiForbidden
     @ApiNotFound
     @ApiInternalError
     public ResponseEntity<Void> delete(@PathVariable UUID uuid) {

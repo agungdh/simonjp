@@ -140,9 +140,9 @@ persisted and the store never contains user data.
   operate on the pegawai of the authenticated user. `PUT /profile` never accepts `role`/`status`, so
   a user cannot escalate their own access; `PUT /profile/password` requires the current password and
   revokes every session afterwards.
-- **Only `ADMIN` may write.** `POST`/`PUT`/`DELETE` on `/pegawai` and `/pangkat-golongan` use
-  `@PreAuthorize("hasRole('ADMIN')")`; `PEGAWAI` is read-only there but can always read the lists and
-  manage their own `/profile`.
+- **Only `ADMIN` may write.** `POST`/`PUT`/`DELETE` on `/pegawai`, `/bidang`, and
+  `/pangkat-golongan` use `@PreAuthorize("hasRole('ADMIN')")`; `PEGAWAI` is read-only there but can
+  always read the lists and manage their own `/profile`.
 - The seeded admin is also a pegawai: `SeedService` (profile `seed`, `./gradlew seed`) creates the
   `admin` account (password `admin`, role `ADMIN`) with a pegawai named `Administrator` (`nip`
   `admin`, `email`/`bidang` left `NULL`), in one transaction. The 100 sample pegawai also get

@@ -24,8 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -38,7 +41,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class BidangControllerTest {
 
     private static final String PASSWORD = "rahasia123";
-    private static final String USERNAME = "admin-bidang-test";
 
     @Autowired
     private MockMvc mvc;
@@ -58,18 +60,104 @@ class BidangControllerTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    private String bearer;
-    private Long userId;
+    private String adminBearer;
+    private String pegawaiBearer;
+    private Long adminUserId;
+    private Long pegawaiUserId;
 
     @BeforeEach
     void setUp() throws Exception {
-        userId = createAccount().getId();
-        bearer = login();
+        adminUserId = createAccount("admin-bidang-test", Role.ADMIN).getId();
+        pegawaiUserId = createAccount("pegawai-bidang-test", Role.PEGAWAI).getId();
+
+        adminBearer = login("admin-bidang-test");
+        pegawaiBearer = login("pegawai-bidang-test");
     }
 
     @AfterEach
     void tearDown() {
-        tokenRepository.revokeAll(userId);
+        tokenRepository.revokeAll(adminUserId);
+        tokenRepository.revokeAll(pegawaiUserId);
+    }
+
+    @Test
+    void adminCanCrudBidang() throws Exception {
+        String nama = "Bidang " + UUID.randomUUID();
+        String uuid = create(nama, "Deskripsi awal");
+
+        mvc.perform(get("/bidang/" + uuid).header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nama").value(nama))
+                .andExpect(jsonPath("$.deskripsi").value("Deskripsi awal"));
+
+        mvc.perform(get("/bidang").header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].uuid").value(uuid));
+
+        mvc.perform(put("/bidang/" + uuid)
+                        .header("Authorization", "Bearer " + adminBearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(nama, "Deskripsi baru")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deskripsi").value("Deskripsi baru"));
+
+        mvc.perform(delete("/bidang/" + uuid).header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get("/bidang/" + uuid).header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isNotFound());
+        assertThat(bidangRepository.findByUuid(UUID.fromString(uuid))).isEmpty();
+    }
+
+    @Test
+    void nonAdminCannotCreate() throws Exception {
+        mvc.perform(post("/bidang")
+                        .header("Authorization", "Bearer " + pegawaiBearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body("Bidang " + UUID.randomUUID(), "Deskripsi")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak"));
+    }
+
+    @Test
+    void nonAdminCannotUpdate() throws Exception {
+        String nama = "Bidang " + UUID.randomUUID();
+        String uuid = create(nama, "Deskripsi awal");
+
+        mvc.perform(put("/bidang/" + uuid)
+                        .header("Authorization", "Bearer " + pegawaiBearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(nama, "Diubah pegawai")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak"));
+
+        Bidang bidang = bidangRepository.findByUuid(UUID.fromString(uuid)).orElseThrow();
+        assertThat(bidang.getDeskripsi()).isEqualTo("Deskripsi awal");
+    }
+
+    @Test
+    void nonAdminCannotDelete() throws Exception {
+        String uuid = create("Bidang " + UUID.randomUUID(), "Deskripsi awal");
+
+        mvc.perform(delete("/bidang/" + uuid).header("Authorization", "Bearer " + pegawaiBearer))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Akses ditolak"));
+
+        assertThat(bidangRepository.findByUuid(UUID.fromString(uuid))).isPresent();
+    }
+
+    @Test
+    void pegawaiCanReadListAndGet() throws Exception {
+        String nama = "Bidang " + UUID.randomUUID();
+        String uuid = create(nama, "Deskripsi awal");
+
+        mvc.perform(get("/bidang").header("Authorization", "Bearer " + pegawaiBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].uuid").value(uuid));
+
+        mvc.perform(get("/bidang/" + uuid).header("Authorization", "Bearer " + pegawaiBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nama").value(nama));
     }
 
     @Test
@@ -82,7 +170,7 @@ class BidangControllerTest {
 
         mvc.perform(get("/bidang")
                         .param("search", token.substring(0, 10).toUpperCase())
-                        .header("Authorization", "Bearer " + bearer))
+                        .header("Authorization", "Bearer " + adminBearer))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].uuid").value(bidang.getUuid().toString()));
     }
@@ -97,7 +185,7 @@ class BidangControllerTest {
 
         mvc.perform(get("/bidang")
                         .param("search", token)
-                        .header("Authorization", "Bearer " + bearer))
+                        .header("Authorization", "Bearer " + pegawaiBearer))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].uuid").value(bidang.getUuid().toString()));
     }
@@ -106,32 +194,48 @@ class BidangControllerTest {
     void searchRejectsTooShortTerm() throws Exception {
         mvc.perform(get("/bidang")
                         .param("search", "ab")
-                        .header("Authorization", "Bearer " + bearer))
+                        .header("Authorization", "Bearer " + adminBearer))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Pencarian minimal 3 karakter"));
     }
 
-    private UserAccount createAccount() {
+    private String create(String nama, String deskripsi) throws Exception {
+        MvcResult result = mvc.perform(post("/bidang")
+                        .header("Authorization", "Bearer " + adminBearer)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(nama, deskripsi)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return JsonPath.read(result.getResponse().getContentAsString(), "$.uuid");
+    }
+
+    private static String body(String nama, String deskripsi) {
+        return """
+                {"nama":"%s","deskripsi":"%s"}"""
+                .formatted(nama, deskripsi);
+    }
+
+    private UserAccount createAccount(String username, Role role) {
         Pegawai pegawai = new Pegawai();
-        pegawai.setNama("Akun Bidang");
+        pegawai.setNama("Akun " + role);
         pegawai.setNip("NIP" + UUID.randomUUID().toString().replace("-", "").substring(0, 15));
         pegawai.setStatus(PegawaiStatus.AKTIF);
         pegawaiRepository.save(pegawai);
 
         UserAccount user = new UserAccount();
-        user.setUsername(USERNAME);
+        user.setUsername(username);
         user.setPasswordHash(passwordEncoder.encode(PASSWORD));
-        user.setRole(Role.ADMIN);
+        user.setRole(role);
         user.setPegawai(pegawai);
         pegawai.setAccount(user);
         return userAccountRepository.save(user);
     }
 
-    private String login() throws Exception {
+    private String login(String username) throws Exception {
         MvcResult result = mvc.perform(post("/auth/token")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"username":"%s","password":"%s"}""".formatted(USERNAME, PASSWORD)))
+                                {"username":"%s","password":"%s"}""".formatted(username, PASSWORD)))
                 .andExpect(status().isOk())
                 .andReturn();
         return JsonPath.read(result.getResponse().getContentAsString(), "$.token");
