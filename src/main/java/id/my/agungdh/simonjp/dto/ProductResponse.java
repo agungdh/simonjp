@@ -19,6 +19,9 @@ public record ProductResponse(
         BigDecimal harga,
 
         @Schema(description = "Stok produk")
-        Integer stok
+        Integer stok,
+
+        @Schema(description = "UUID kategori produk")
+        UUID kategoriUuid
 ) {
 }

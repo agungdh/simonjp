@@ -1,10 +1,12 @@
 package id.my.agungdh.simonjp.service;
 
+import id.my.agungdh.simonjp.domain.Kategori;
 import id.my.agungdh.simonjp.domain.Product;
 import id.my.agungdh.simonjp.dto.CursorPageDTO;
 import id.my.agungdh.simonjp.dto.ProductRequest;
 import id.my.agungdh.simonjp.dto.ProductResponse;
 import id.my.agungdh.simonjp.mapper.ProductMapper;
+import id.my.agungdh.simonjp.repository.KategoriRepository;
 import id.my.agungdh.simonjp.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,12 +28,14 @@ public class ProductService {
 
     private final ProductRepository repository;
     private final ProductMapper mapper;
+    private final KategoriRepository kategoriRepository;
 
     @Value("${app.page-size:20}")
     private int pageSize;
 
     public ProductResponse create(ProductRequest request) {
         Product entity = mapper.toEntity(request);
+        entity.setKategori(resolveKategori(request.kategoriUuid()));
         repository.save(entity);
         return mapper.toResponse(entity);
     }
@@ -47,8 +51,17 @@ public class ProductService {
         Product entity = repository.findByUuid(uuid)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produk tidak ditemukan"));
         mapper.updateEntity(request, entity);
+        entity.setKategori(resolveKategori(request.kategoriUuid()));
         repository.save(entity);
         return mapper.toResponse(entity);
+    }
+
+    private Kategori resolveKategori(UUID kategoriUuid) {
+        if (kategoriUuid == null) {
+            return null;
+        }
+        return kategoriRepository.findByUuid(kategoriUuid)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Kategori tidak ditemukan"));
     }
 
     public void delete(UUID uuid) {

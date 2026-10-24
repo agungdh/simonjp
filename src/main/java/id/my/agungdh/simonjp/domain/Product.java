@@ -2,6 +2,8 @@ package id.my.agungdh.simonjp.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -25,4 +27,8 @@ public class Product extends BaseEntity {
 
     @Column(name = "stok", nullable = false)
     private Integer stok;
+
+    @ManyToOne
+    @JoinColumn(name = "kategori_id")
+    private Kategori kategori;
 }

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 public record ProductRequest(
         @Schema(description = "Nama produk", example = "Laptop")
@@ -24,6 +25,9 @@ public record ProductRequest(
         @Schema(description = "Stok produk", example = "10")
         @NotNull
         @PositiveOrZero
-        Integer stok
+        Integer stok,
+
+        @Schema(description = "UUID kategori produk")
+        UUID kategoriUuid
 ) {
 }

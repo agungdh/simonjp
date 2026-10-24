@@ -18,6 +18,7 @@ public interface ProductMapper {
     @Mapping(target = "updatedBy", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "deletedBy", ignore = true)
+    @Mapping(target = "kategori", ignore = true)
     Product toEntity(ProductRequest request);
 
     @Mapping(target = "id", ignore = true)
@@ -28,7 +29,9 @@ public interface ProductMapper {
     @Mapping(target = "updatedBy", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "deletedBy", ignore = true)
+    @Mapping(target = "kategori", ignore = true)
     void updateEntity(ProductRequest request, @MappingTarget Product entity);
 
+    @Mapping(source = "kategori.uuid", target = "kategoriUuid")
     ProductResponse toResponse(Product entity);
 }
