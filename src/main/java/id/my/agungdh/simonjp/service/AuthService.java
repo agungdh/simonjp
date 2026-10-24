@@ -5,14 +5,17 @@ import id.my.agungdh.simonjp.dto.LoginRequest;
 import id.my.agungdh.simonjp.dto.UserResponse;
 import id.my.agungdh.simonjp.mapper.UserMapper;
 import id.my.agungdh.simonjp.repository.AuthTokenRepository;
+import id.my.agungdh.simonjp.repository.UserAccountRepository;
 import id.my.agungdh.simonjp.security.AppUserDetails;
 import id.my.agungdh.simonjp.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 
@@ -25,6 +28,7 @@ public class AuthService {
 
     private final AuthenticationManager authenticationManager;
     private final AuthTokenRepository tokenRepository;
+    private final UserAccountRepository userAccountRepository;
     private final AuthProperties properties;
     private final UserMapper userMapper;
 
@@ -40,9 +44,17 @@ public class AuthService {
         return login(request, null, properties.mobileTokenTtl());
     }
 
+    /**
+     * Principal tidak menyimpan relasi, jadi user dibaca ulang beserta pegawai dan
+     * bidangnya ({@code open-in-view} dimatikan).
+     */
     @Transactional(readOnly = true)
     public UserResponse me() {
-        return CurrentUser.require().toResponse();
+        Long userId = CurrentUser.require().id();
+        return userAccountRepository.findWithRelationsById(userId)
+                .map(userMapper::toResponse)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED, "Autentikasi diperlukan"));
     }
 
     public void logout(String token) {

@@ -31,6 +31,7 @@ public class PegawaiService {
     private final PegawaiRepository repository;
     private final PegawaiMapper mapper;
     private final BidangRepository bidangRepository;
+    private final UserAccountService userAccountService;
 
     public PegawaiResponse create(PegawaiRequest request) {
         Pegawai entity = mapper.toEntity(request);
@@ -58,6 +59,8 @@ public class PegawaiService {
     public void delete(UUID uuid) {
         Pegawai entity = repository.findByUuid(uuid)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pegawai tidak ditemukan"));
+        // Akun login selalu menempel ke pegawai, jadi ikut dihapus saat pegawai dihapus.
+        userAccountService.softDeleteByPegawai(entity);
         entity.setDeletedAt(OffsetDateTime.now());
         CurrentUser.id().ifPresent(entity::setDeletedBy);
         repository.save(entity);

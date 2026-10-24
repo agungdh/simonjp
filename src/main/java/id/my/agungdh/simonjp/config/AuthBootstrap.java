@@ -31,8 +31,8 @@ public class AuthBootstrap implements ApplicationRunner {
             throw new IllegalStateException(
                     "app.auth.bootstrap.enabled=true tetapi APP_ADMIN_USERNAME/APP_ADMIN_PASSWORD kosong");
         }
-        userAccountService.ensureUser(bootstrap.username().trim(), bootstrap.password(),
-                isBlank(bootstrap.nama()) ? "Administrator" : bootstrap.nama(), Role.ADMIN);
+        userAccountService.ensureAdmin(bootstrap.username().trim(), bootstrap.password(),
+                isBlank(bootstrap.pegawaiNama()) ? "Administrator" : bootstrap.pegawaiNama(), Role.ADMIN);
         log.info("Bootstrap admin siap untuk username {}", bootstrap.username());
     }
 

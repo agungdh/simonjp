@@ -1,10 +1,16 @@
 package id.my.agungdh.simonjp.auth;
 
 import com.jayway.jsonpath.JsonPath;
+import id.my.agungdh.simonjp.domain.Bidang;
+import id.my.agungdh.simonjp.domain.Pegawai;
 import id.my.agungdh.simonjp.domain.Role;
 import id.my.agungdh.simonjp.domain.UserAccount;
 import id.my.agungdh.simonjp.repository.AuthTokenRepository;
+import id.my.agungdh.simonjp.repository.BidangRepository;
+import id.my.agungdh.simonjp.repository.PegawaiRepository;
 import id.my.agungdh.simonjp.repository.UserAccountRepository;
+import id.my.agungdh.simonjp.service.PegawaiService;
+import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -50,23 +57,51 @@ class AuthControllerTest {
     private UserAccountRepository userRepository;
 
     @Autowired
+    private PegawaiRepository pegawaiRepository;
+
+    @Autowired
+    private BidangRepository bidangRepository;
+
+    @Autowired
     private AuthTokenRepository tokenRepository;
+
+    @Autowired
+    private PegawaiService pegawaiService;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     private String username;
     private Long userId;
+    private String bidangNama;
+    private UUID pegawaiUuid;
 
     @BeforeEach
     void setUp() {
         username = "test-" + UUID.randomUUID();
+
+        Bidang bidang = new Bidang();
+        bidang.setNama("Bidang Test " + UUID.randomUUID());
+        bidang.setDeskripsi("Deskripsi bidang test");
+        bidangRepository.save(bidang);
+        bidangNama = bidang.getNama();
+
+        Pegawai pegawai = new Pegawai();
+        pegawai.setNama("Test Admin");
+        pegawai.setNip("NIP-" + UUID.randomUUID());
+        pegawai.setEmail("test-" + UUID.randomUUID() + "@example.com");
+        pegawai.setBidang(bidang);
+        pegawaiRepository.save(pegawai);
+        pegawaiUuid = pegawai.getUuid();
+
         UserAccount user = new UserAccount();
         user.setUsername(username);
         user.setPasswordHash(passwordEncoder.encode(PASSWORD));
-        user.setNama("Test Admin");
         user.setRole(Role.ADMIN);
-        user.setEnabled(true);
+        user.setPegawai(pegawai);
         userRepository.save(user);
         userId = user.getId();
     }
@@ -139,7 +174,10 @@ class AuthControllerTest {
         mvc.perform(get("/auth/me").cookie(token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value(username))
-                .andExpect(jsonPath("$.role").value("ADMIN"));
+                .andExpect(jsonPath("$.role").value("ADMIN"))
+                .andExpect(jsonPath("$.pegawai.uuid").value(pegawaiUuid.toString()))
+                .andExpect(jsonPath("$.pegawai.nama").value("Test Admin"))
+                .andExpect(jsonPath("$.pegawai.bidang.nama").value(bidangNama));
     }
 
     @Test
@@ -191,23 +229,58 @@ class AuthControllerTest {
     }
 
     @Test
-    void disabledUserCannotLogin() throws Exception {
-        UserAccount disabled = new UserAccount();
-        disabled.setUsername("disabled-" + UUID.randomUUID());
-        disabled.setPasswordHash(passwordEncoder.encode(PASSWORD));
-        disabled.setNama("Disabled");
-        disabled.setRole(Role.VIEWER);
-        disabled.setEnabled(false);
-        userRepository.save(disabled);
+    void softDeletedUserCannotLogin() throws Exception {
+        UserAccount deleted = new UserAccount();
+        deleted.setUsername("deleted-" + UUID.randomUUID());
+        deleted.setPasswordHash(passwordEncoder.encode(PASSWORD));
+        deleted.setRole(Role.VIEWER);
+        Pegawai pegawai = new Pegawai();
+        pegawai.setNama("Deleted User");
+        pegawaiRepository.save(pegawai);
+        deleted.setPegawai(pegawai);
+        deleted.setDeletedAt(OffsetDateTime.now());
+        userRepository.save(deleted);
 
         Csrf csrf = csrf();
         mvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header(CSRF_HEADER, csrf.token())
                         .cookie(csrf.cookie())
-                        .content(loginBody(disabled.getUsername())))
+                        .content(loginBody(deleted.getUsername())))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("Akun tidak aktif"));
+                .andExpect(jsonPath("$.message").value("Username atau password salah"));
+    }
+
+    @Test
+    void deletingPegawaiSoftDeletesUserAndRevokesTokens() throws Exception {
+        Cookie token = loginCookie();
+        assertThat(tokenRepository.resolve(token.getValue())).isPresent();
+
+        pegawaiService.delete(pegawaiUuid);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(userRepository.findByUsernameIgnoreCase(username)).isEmpty();
+        assertThat(tokenRepository.resolve(token.getValue())).isEmpty();
+
+        mvc.perform(get("/auth/me").cookie(token))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void softDeletedAccountCannotUseExistingToken() throws Exception {
+        Cookie token = loginCookie();
+
+        UserAccount user = userRepository.findById(userId).orElseThrow();
+        user.setDeletedAt(OffsetDateTime.now());
+        userRepository.save(user);
+        entityManager.flush();
+        entityManager.clear();
+
+        // Token masih ada di Valkey, tapi akun yang sudah soft deleted harus ditolak.
+        assertThat(tokenRepository.resolve(token.getValue())).isPresent();
+        mvc.perform(get("/auth/me").cookie(token))
+                .andExpect(status().isUnauthorized());
     }
 
     private Csrf csrf() throws Exception {

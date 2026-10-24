@@ -14,7 +14,7 @@ import java.time.Duration;
  * @param webTokenTtl     sliding TTL untuk session web
  * @param mobileTokenTtl  sliding TTL untuk bearer mobile
  * @param bcryptStrength  cost BCrypt (4 khusus test, 12 untuk production)
- * @param bootstrap       pembuatan admin awal dari environment
+ * @param bootstrap       pembuatan admin awal (beserta pegawainya) dari environment
  */
 @ConfigurationProperties(prefix = "app.auth")
 public record AuthProperties(
@@ -40,6 +40,6 @@ public record AuthProperties(
         }
     }
 
-    public record Bootstrap(boolean enabled, String username, String password, String nama) {
+    public record Bootstrap(boolean enabled, String username, String password, String pegawaiNama) {
     }
 }

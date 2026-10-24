@@ -1,9 +1,11 @@
 package id.my.agungdh.simonjp.auth;
 
 import com.jayway.jsonpath.JsonPath;
+import id.my.agungdh.simonjp.domain.Pegawai;
 import id.my.agungdh.simonjp.domain.Role;
 import id.my.agungdh.simonjp.domain.UserAccount;
 import id.my.agungdh.simonjp.repository.AuthTokenRepository;
+import id.my.agungdh.simonjp.repository.PegawaiRepository;
 import id.my.agungdh.simonjp.repository.UserAccountRepository;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
@@ -55,6 +57,9 @@ class TokenRefreshTest {
     private UserAccountRepository userRepository;
 
     @Autowired
+    private PegawaiRepository pegawaiRepository;
+
+    @Autowired
     private AuthTokenRepository tokenRepository;
 
     @Autowired
@@ -66,12 +71,16 @@ class TokenRefreshTest {
     @BeforeEach
     void setUp() {
         username = "refresh-" + UUID.randomUUID();
+
+        Pegawai pegawai = new Pegawai();
+        pegawai.setNama("Refresh User");
+        pegawaiRepository.save(pegawai);
+
         UserAccount user = new UserAccount();
         user.setUsername(username);
         user.setPasswordHash(passwordEncoder.encode(PASSWORD));
-        user.setNama("Refresh User");
         user.setRole(Role.VIEWER);
-        user.setEnabled(true);
+        user.setPegawai(pegawai);
         userRepository.save(user);
         userId = user.getId();
     }

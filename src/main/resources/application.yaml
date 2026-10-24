@@ -40,4 +40,5 @@ app:
       enabled: ${AUTH_BOOTSTRAP_ENABLED:false}
       username: ${APP_ADMIN_USERNAME:}
       password: ${APP_ADMIN_PASSWORD:}
-      nama: ${APP_ADMIN_NAMA:Administrator}
+      # Nama pegawai yang dibuat untuk admin bootstrap (setiap akun wajib punya pegawai).
+      pegawai-nama: ${APP_ADMIN_NAMA:Administrator}

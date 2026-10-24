@@ -1,7 +1,6 @@
 package id.my.agungdh.simonjp.security;
 
 import id.my.agungdh.simonjp.config.AuthProperties;
-import id.my.agungdh.simonjp.domain.UserAccount;
 import id.my.agungdh.simonjp.repository.AuthTokenRepository;
 import id.my.agungdh.simonjp.repository.UserAccountRepository;
 import jakarta.servlet.FilterChain;
@@ -22,7 +21,7 @@ import java.util.Optional;
 
 /**
  * Autentikasi per request dari token opaque (cookie atau bearer). Data user selalu
- * dibaca ulang dari database, sehingga perubahan role / status enabled langsung berlaku.
+ * dibaca ulang dari database, sehingga perubahan role dan soft delete akun langsung berlaku.
  */
 @Component
 @RequiredArgsConstructor
@@ -53,10 +52,9 @@ public class TokenAuthenticationFilter extends OncePerRequestFilter {
 
         tokenRepository.resolve(token)
                 .flatMap(userRepository::findById)
-                .filter(UserAccount::isEnabled)
                 .ifPresent(user -> {
                     AppUserPrincipal principal = new AppUserPrincipal(
-                            user.getId(), user.getUuid(), user.getUsername(), user.getNama(), user.getRole());
+                            user.getId(), user.getUuid(), user.getUsername(), user.getRole());
                     UsernamePasswordAuthenticationToken authentication =
                             UsernamePasswordAuthenticationToken.authenticated(principal, null,
                                     List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())));

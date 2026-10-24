@@ -107,9 +107,28 @@ persisted and the store never contains user data.
 - `SessionCreationPolicy.STATELESS` is intentional: there is no `JSESSIONID`, no `HttpSession`, and no
   `spring-session`. Do not call `request.getSession()`, do not store state in the session, and do not
   add `@SessionAttributes`.
-- User data is **looked up from PostgreSQL on every request** (`enabled`, `role`). Never put the
-  principal in the token or in a cookie; a disabled user or changed role must take effect on the next
-  request.
+- User data is **looked up from PostgreSQL on every request** (soft-delete state, `role`, linked
+  pegawai). Never put the principal in the token or in a cookie; a soft-deleted account or a changed
+  role must take effect on the next request.
+- **A user account is always 1-1 with a pegawai.** `user_account.pegawai_id` is `NOT NULL`, and the
+  unique partial index `ux_user_account_pegawai_id_active` allows at most one active account per
+  pegawai. The account table stores only `username`, `password_hash`, `role`, and the FK: there is
+  no `nama` (read it from the pegawai) and no `enabled` flag (soft delete via `deleted_at` replaces
+  it). The FK lives on `user_account` as `pegawai_id`; do not add `user_account_id` to `pegawai`.
+- **Deleting a pegawai soft-deletes its account and revokes its tokens.** Soft-deleting the pegawai
+  row alone is not enough, because clients could keep using the account; `PegawaiService.delete`
+  calls `UserAccountService.softDeleteByPegawai`, which sets `deleted_at`/`deleted_by` and calls
+  `AuthTokenRepository.revokeAll`. Deleting the account on its own is not part of the API; account
+  management follows the pegawai CRUD.
+- **`/auth/login`, `/auth/token`, and `/auth/me` return the pegawai with its bidang.** `UserResponse`
+  embeds `UserPegawaiResponse` (`uuid`, `nama`, `nip`, `email`, `bidang`), and `UserMapper` loads the
+  relation through MapStruct (`BidangMapper` for the nested bidang). Because `open-in-view` is
+  disabled, `AuthService.me()` re-reads the user with the `pegawai` and `pegawai.bidang` entity graph
+  instead of reading lazy relations from the principal. The `/pegawai` endpoints keep the leaner
+  `PegawaiResponse` with `bidangUuid`.
+- The bootstrap admin is also a pegawai: `AuthBootstrap` creates a pegawai row (name from
+  `APP_ADMIN_NAMA`, `nip`/`email` left `NULL`) and then the account, in one transaction. There is no
+  account without a pegawai, including system/bootstrap accounts.
 - TTL is **sliding**: web 8h, mobile 30d. `AuthTokenRepository.refresh` extends the TTL only when the
   remaining lifetime is below 50%, to avoid a Valkey write per request. For cookie sessions the
   server must also re-send `Set-Cookie` with a fresh `Max-Age` whenever it extends the TTL.
@@ -118,7 +137,8 @@ persisted and the store never contains user data.
   keeps it in memory, and sends it as `X-XSRF-TOKEN`.
 - Never log tokens or cookies, and never accept `role`/audit fields from a request body.
 - `CurrentUser` exposes the authenticated principal for audit (`@CreatedBy`/`@LastModifiedBy` via
-  `JpaAuditConfig`) and for `GET /auth/me`.
+  `JpaAuditConfig`) and for `GET /auth/me`. The principal only carries `id`, `uuid`, `username`, and
+  `role`; anything else is re-read from the database when needed.
 - 401/403 must keep the `ErrorResponse` shape: filter-chain failures are handled by
   `security/RestAuthenticationEntryPoint`, `RestAccessDeniedHandler`, and `CsrfAccessDeniedHandler`;
   failures from `@PreAuthorize` are handled by `GlobalExceptionHandler`.
@@ -450,7 +470,9 @@ partial index `(deleted_at) WHERE deleted_at IS NOT NULL`.
     enforces that order in the generated spec; details in the REST conventions section.
 15. **Auth is opaque-token based, cookie for web and bearer for mobile.** Tokens live in Valkey as
     `auth:sess:<sha256(token)>` → `userId`; never store the raw token or user data there, and never
-    reintroduce `HttpSession`/`spring-session` (the app is `STATELESS` on purpose). Details in the
+    reintroduce `HttpSession`/`spring-session` (the app is `STATELESS` on purpose). A user account is
+    always 1-1 with a pegawai (`pegawai_id NOT NULL`), has no `nama`/`enabled` columns, and is
+    soft-deleted together with its pegawai while its tokens are revoked. Details in the
     authentication section above.
 16. **Cookie requests require CSRF; bearer requests do not.** The frontend reads the CSRF token from
     the body of `GET /auth/csrf` (cross-subdomain JavaScript cannot read the API cookie) and sends it

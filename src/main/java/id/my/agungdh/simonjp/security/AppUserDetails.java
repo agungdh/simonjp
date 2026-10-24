@@ -42,26 +42,6 @@ public class AppUserDetails implements UserDetails {
         return user.getUsername();
     }
 
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return user.isEnabled();
-    }
-
     public Role getRole() {
         return user.getRole();
     }
