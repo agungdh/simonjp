@@ -15,5 +15,3 @@ spring:
   flyway:
     enabled: true
 
-app:
-  page-size: 20
