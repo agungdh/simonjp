@@ -11,6 +11,7 @@ public record PegawaiRequest(
         String nama,
 
         @Schema(description = "NIP pegawai", example = "123456")
+        @NotBlank
         String nip,
 
         @Schema(description = "Email pegawai")
