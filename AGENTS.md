@@ -353,12 +353,11 @@ semantics (`%kata%`), not prefix or full-text search:
   (`nama`, `deskripsi`) and `pangkat-golongan` searches (`jenjang`, `pangkat`, `golongan`, `ruang`)
   stay on their own tables. The FE only has one search field, so do not turn this into per-column
   parameters.
-- A cross-table `OR` cannot use each table's index at once, so `PegawaiRepositoryImpl` splits the
-  search into three ID queries: pegawai's own columns, `bidang` (master IDs first, then
-  `bidang_id IN (...)`), and `pangkat_golongan` (same pattern). The ID sets are unioned, sorted by
-  `id DESC`, then entities are fetched by ID. The pegawai branch has no join, so a pegawai with
-  `NULL` bidang/pangkat still matches through its own columns; a master branch is skipped entirely
-  when no master row matches. Do not collapse this back into one query with a joined `OR`.
+- `PegawaiRepositoryImpl` uses `LEFT JOIN` to `bidang` and `pangkat_golongan` and puts the search
+  predicate in `WHERE` (`OR` across own and joined columns). Keep this simple shape for now; the
+  `LEFT JOIN` means a pegawai with `NULL` bidang/pangkat still matches through its own columns.
+  Only split the search into per-source ID queries if `EXPLAIN` proves the joined `OR` is a real
+  problem at production scale — do not pre-optimize for hypothetical millions of rows.
 - The `bidangUuid`/`pangkatGolonganUuid` params remain exact filters and can be combined with the
   same `search`.
 - Structured filters are exact and combined with **AND**; `search` itself is an **OR** across its

@@ -15,26 +15,19 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
- * Implementasi query dinamis untuk {@link PegawaiRepositoryCustom}. Predicate dibangun per filter
- * (bukan {@code :param IS NULL OR ...}) agar PostgreSQL tidak memakai generic plan yang memaksa
- * seq scan saat filter dikirim.
+ * Implementasi query dinamis untuk {@link PegawaiRepositoryCustom}.
  *
- * <p>Search adalah satu kata kunci untuk FE, jadi kolom teks milik pegawai ikut digabung dengan
- * kolom teks {@code bidang} dan {@code pangkat_golongan}. OR lintas tabel tidak bisa memakai index
- * sekaligus, sehingga pencarian dipecah per sumber: ID dari kolom pegawai, ID dari bidang, dan ID
- * dari pangkat/golongan diambil terpisah (masing-masing memakai GIN trigram miliknya), lalu di-union
- * dan diambil {@code limit} teratas berdasarkan {@code id DESC}. Entity baru di-fetch setelahnya.
+ * <p>Semua filter, pencarian, urutan, dan limit dikerjakan di database. Search adalah satu kata
+ * kunci untuk FE, jadi kolom teks pegawai digabung dengan kolom teks {@code bidang} dan
+ * {@code pangkat_golongan} lewat {@code LEFT JOIN}; predikatnya ada di {@code WHERE}. Join memakai
+ * {@code LEFT} supaya pegawai tanpa bidang/pangkat tetap bisa ditemukan lewat kolomnya sendiri.
  *
- * <p>Cabang bidang/pangkat mencari ID master lebih dulu, lalu memakai {@code IN} literal. Dengan
- * begitu, kalau tidak ada master yang cocok, query pegawai tidak dijalankan sama sekali dan planner
- * tidak memindai seluruh tabel pegawai hanya untuk menemukan nol baris.
+ * <p>Query ID dan query fetch dipisah supaya join untuk search tidak terduplikasi dengan join dari
+ * fetch graph. Query fetch hanya mengambil baris yang sudah terpilih, jadi urutan dan limit tetap
+ * ditentukan database.
  */
 public class PegawaiRepositoryImpl implements PegawaiRepositoryCustom {
 
@@ -49,35 +42,10 @@ public class PegawaiRepositoryImpl implements PegawaiRepositoryCustom {
 
     @Override
     public List<Pegawai> findPage(PegawaiFilter filter, Long cursorId, int limit) {
-        if (filter.searchPattern() == null) {
-            return fetchByIds(findIds(filter, cursorId, limit, null, List.of()));
-        }
-
-        Set<Long> matched = new HashSet<>(findIds(filter, cursorId, limit, null, List.of()));
-
-        List<Long> bidangIds = findMasterIds(Bidang.class, filter.searchPattern(), "nama", "deskripsi");
-        if (!bidangIds.isEmpty()) {
-            matched.addAll(findIds(filter, cursorId, limit, "bidang", bidangIds));
-        }
-
-        List<Long> pangkatIds = findMasterIds(PangkatGolongan.class, filter.searchPattern(),
-                "jenjang", "pangkat", "golongan", "ruang");
-        if (!pangkatIds.isEmpty()) {
-            matched.addAll(findIds(filter, cursorId, limit, "pangkatGolongan", pangkatIds));
-        }
-
-        List<Long> ids = matched.stream().sorted(Comparator.reverseOrder()).limit(limit).toList();
-        return fetchByIds(ids);
+        return fetchByIds(findIds(filter, cursorId, limit));
     }
 
-    /**
-     * ID pegawai untuk satu sumber pencarian.
-     *
-     * @param searchRelation    {@code null} untuk kolom pegawai sendiri, atau nama relasi yang dicari
-     * @param searchRelationIds ID master yang cocok; hanya dipakai kalau {@code searchRelation} diisi
-     */
-    private List<Long> findIds(PegawaiFilter filter, Long cursorId, int limit,
-                               String searchRelation, List<Long> searchRelationIds) {
+    private List<Long> findIds(PegawaiFilter filter, Long cursorId, int limit) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Long> criteria = cb.createQuery(Long.class);
         Root<Pegawai> root = criteria.from(Pegawai.class);
@@ -98,53 +66,40 @@ public class PegawaiRepositoryImpl implements PegawaiRepositoryCustom {
                     filter.kategoriKebutuhanJamPelatihan()));
         }
 
-        if (filter.bidangUuid() != null || "bidang".equals(searchRelation)) {
-            Join<Pegawai, Bidang> bidang = root.join("bidang", JoinType.INNER);
-            if (filter.bidangUuid() != null) {
-                predicates.add(cb.equal(bidang.get("uuid"), filter.bidangUuid()));
-            }
-            if ("bidang".equals(searchRelation)) {
-                predicates.add(bidang.get("id").in(searchRelationIds));
-            }
+        String pattern = filter.searchPattern();
+        Join<Pegawai, Bidang> bidang = null;
+        Join<Pegawai, PangkatGolongan> pangkat = null;
+        if (pattern != null || filter.bidangUuid() != null) {
+            bidang = root.join("bidang", JoinType.LEFT);
         }
-        if (filter.pangkatGolonganUuid() != null || "pangkatGolongan".equals(searchRelation)) {
-            Join<Pegawai, PangkatGolongan> pangkat = root.join("pangkatGolongan", JoinType.INNER);
-            if (filter.pangkatGolonganUuid() != null) {
-                predicates.add(cb.equal(pangkat.get("uuid"), filter.pangkatGolonganUuid()));
-            }
-            if ("pangkatGolongan".equals(searchRelation)) {
-                predicates.add(pangkat.get("id").in(searchRelationIds));
-            }
+        if (pattern != null || filter.pangkatGolonganUuid() != null) {
+            pangkat = root.join("pangkatGolongan", JoinType.LEFT);
         }
-
-        if (searchRelation == null && filter.searchPattern() != null) {
-            String pattern = filter.searchPattern();
+        if (filter.bidangUuid() != null) {
+            predicates.add(cb.equal(bidang.get("uuid"), filter.bidangUuid()));
+        }
+        if (filter.pangkatGolonganUuid() != null) {
+            predicates.add(cb.equal(pangkat.get("uuid"), filter.pangkatGolonganUuid()));
+        }
+        if (pattern != null) {
             predicates.add(cb.or(
                     like(cb, root.get("nama"), pattern),
                     like(cb, root.get("nip"), pattern),
                     like(cb, root.get("email"), pattern),
                     like(cb, root.get("jabatan"), pattern),
-                    like(cb, root.get("peran"), pattern)
+                    like(cb, root.get("peran"), pattern),
+                    like(cb, bidang.get("nama"), pattern),
+                    like(cb, bidang.get("deskripsi"), pattern),
+                    like(cb, pangkat.get("jenjang"), pattern),
+                    like(cb, pangkat.get("pangkat"), pattern),
+                    like(cb, pangkat.get("golongan"), pattern),
+                    like(cb, pangkat.get("ruang"), pattern)
             ));
         }
 
         criteria.where(predicates.toArray(Predicate[]::new));
         criteria.orderBy(cb.desc(root.get("id")));
         return entityManager.createQuery(criteria).setMaxResults(limit).getResultList();
-    }
-
-    /** ID baris master yang kolom teksnya cocok dengan pola pencarian. */
-    private <T> List<Long> findMasterIds(Class<T> type, String pattern, String... columns) {
-        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-        CriteriaQuery<Long> criteria = cb.createQuery(Long.class);
-        Root<T> root = criteria.from(type);
-        criteria.select(root.<Long>get("id"));
-
-        Predicate[] predicates = Arrays.stream(columns)
-                .map(column -> like(cb, root.get(column), pattern))
-                .toArray(Predicate[]::new);
-        criteria.where(cb.or(predicates));
-        return entityManager.createQuery(criteria).getResultList();
     }
 
     private List<Pegawai> fetchByIds(List<Long> ids) {
