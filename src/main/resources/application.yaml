@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: simonjp
+  threads:
+    virtual:
+      enabled: true

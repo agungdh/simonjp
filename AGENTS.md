@@ -9,20 +9,20 @@ focuses on what you need when changing code.
 
 ## Stack
 
-- Quarkus 3.40.1.1 (BOM in `gradle.properties`), Java 25, Gradle Kotlin DSL (`build.gradle.kts`).
-- REST: `quarkus-rest` + `quarkus-rest-jackson`; OpenAPI: `quarkus-smallrye-openapi` + `quarkus-swagger-ui`.
-- Persistence: Hibernate ORM (JPA), PostgreSQL, Flyway.
-- Lombok (`compileOnly`) + MapStruct, all CDI beans.
-- Virtual threads: every blocking REST resource uses `@RunOnVirtualThread` at class level.
+- Spring Boot 4.1.2 (Gradle plugin), Java 25, Gradle Kotlin DSL (`build.gradle.kts`).
+- REST: Spring MVC (`spring-boot-starter-webmvc`); OpenAPI: `springdoc-openapi-starter-webmvc-ui`.
+- Persistence: Spring Data JPA / Hibernate, PostgreSQL, Flyway.
+- Lombok (`compileOnly`) + MapStruct, Spring beans (constructor injection).
+- Native image: GraalVM/Mandrel via `org.graalvm.buildtools.native` (`./gradlew nativeCompile`).
 
 ## Commands
 
 ```shell
 docker compose up -d postgres     # required before tests / dev
-./gradlew quarkusDev              # dev mode, http://localhost:8080
-./gradlew test                    # requires a running Postgres
-./gradlew build                   # build + test
-./gradlew build -Dquarkus.native.enabled=true   # native (GraalVM)
+./gradlew bootRun                # dev mode, http://localhost:8080
+./gradlew test                   # requires a running Postgres
+./gradlew build                  # build + test
+./gradlew nativeCompile          # native (GraalVM/Mandrel)
 ```
 
 `src/native-test` holds separate integration tests (`*IT`), run only during native builds.
@@ -39,12 +39,12 @@ All production code lives in `src/main/java/id/my/agungdh/`:
 
 | Package | Contents | May depend on |
 | --- | --- | --- |
-| `resource/` | JAX-RS resources, HTTP + DTO only | `service/`, `dto/` |
+| `resource/` | Spring MVC resources (controllers), HTTP + DTO only | `service/`, `dto/` |
 | `service/` | Business logic, transactions, resolving `*Uuid` to entities | `repository/`, `domain/`, `dto/`, `mapper/` |
 | `repository/` | Database access (Hibernate/`EntityManager`), queries | `domain/` |
 | `domain/` | JPA entities. New entities extend `BaseEntity` (identity + audit). Mutable, uses Lombok. | no other application layer |
 | `dto/` | Immutable `record` request/response types, camelCase | no other application layer |
-| `mapper/` | MapStruct interfaces (`componentModel = "cdi"`) | `domain/`, `dto/` |
+| `mapper/` | MapStruct interfaces (`componentModel = "spring"`) | `domain/`, `dto/` |
 
 Layer rules:
 
@@ -60,9 +60,9 @@ Layer rules:
 
 ## Virtual threads, Java 25 & mapping
 
-- **Every REST resource uses virtual threads.** Put `@RunOnVirtualThread` at class level, not per
-  method, for consistency. Endpoints must be blocking and return DTOs/`Response`, not
-  `Uni`/`Multi`.
+- **Virtual threads are enabled globally** via `spring.threads.virtual.enabled=true` in
+  `application.yml`. Endpoints stay blocking and return DTOs/`Response`. Do not use reactive
+  types (`Mono`/`Flux`).
 - **Virtual threads suit CRUD** because the workload is mostly blocking I/O (JDBC, Hibernate, HTTP
   clients). This is not a CPU speedup: do not run PDF/Excel generation, compression, or heavy
   computation in this service. Delegate it to another service over an HTTP client; the I/O call
@@ -71,7 +71,7 @@ Layer rules:
 - `@Transactional` stays in the service layer, never in resources.
 - **DTOs are always immutable `record`s**, including requests, responses, and pagination wrappers.
   Do not use Lombok/`@Data` in DTOs. Fields are camelCase and annotated with `@Schema` for OpenAPI.
-- **Entity ↔ DTO conversion goes through MapStruct only**, in `mapper/` (`componentModel = "cdi"`).
+- **Entity ↔ DTO conversion goes through MapStruct only**, in `mapper/` (`componentModel = "spring"`).
   Resources must not map manually; services use the mappers. When mapping request → entity, `id`,
   `uuid`, and audit columns must be `ignore`d; `uuid`/audit are filled by the service/listener.
 - **Java 25 is the target.** Do not lower `sourceCompatibility`/`targetCompatibility`; use `record`,
@@ -329,11 +329,11 @@ partial index `(deleted_at) WHERE deleted_at IS NOT NULL`.
    section above).
 3. **Annotation processor order matters** in `build.gradle.kts`: Lombok → `lombok-mapstruct-binding`
    → MapStruct. Changing this order makes mappers fail to see Lombok-generated getters/builders.
-4. **Tests use a real PostgreSQL**, not H2/in-memory. Quarkus tests (`@QuarkusTest`) fail unless
+4. **Tests use a real PostgreSQL**, not H2/in-memory. Spring Boot tests (`@SpringBootTest`) fail unless
    `docker compose up -d postgres` has been run.
-5. **Java 25 + virtual threads:** do not lower compatibility; use `record` for DTOs,
-   `@RunOnVirtualThread` at class level for every resource, and MapStruct for entity ↔ DTO (details
-   in the virtual threads section above).
+5. **Java 25 + virtual threads:** do not lower compatibility; use `record` for DTOs, enable virtual
+   threads via `spring.threads.virtual.enabled=true`, and MapStruct for entity ↔ DTO (details in the
+   virtual threads section above).
 6. UTF-8 encoding and the `-parameters` compiler flag are already configured in `build.gradle.kts`;
    do not remove them (Jackson/MapStruct need them).
 7. Code comments and endpoint names in this repo mix Indonesian and English. Follow the style of the
