@@ -21,16 +21,31 @@ repositories {
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
+	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+	implementation("org.springframework.boot:spring-boot-starter-flyway")
+	implementation("org.flywaydb:flyway-database-postgresql")
+	implementation("org.postgresql:postgresql")
+	implementation("org.mapstruct:mapstruct:1.6.3")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 	compileOnly("org.projectlombok:lombok")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	annotationProcessor("org.projectlombok:lombok")
+	annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
+	annotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
 	annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
 	testCompileOnly("org.projectlombok:lombok")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	testAnnotationProcessor("org.projectlombok:lombok")
+	testAnnotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
+	testAnnotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
+}
+
+tasks.withType<JavaCompile> {
+	options.encoding = "UTF-8"
+	options.compilerArgs.add("-parameters")
 }
 
 tasks.withType<Test> {
