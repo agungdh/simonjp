@@ -6,9 +6,10 @@ import id.my.agungdh.simonjp.dto.ProductRequest;
 import id.my.agungdh.simonjp.dto.ProductResponse;
 import id.my.agungdh.simonjp.mapper.ProductMapper;
 import id.my.agungdh.simonjp.repository.ProductRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,18 +21,14 @@ import java.util.UUID;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class ProductService {
 
     private final ProductRepository repository;
     private final ProductMapper mapper;
-    private final int pageSize;
 
-    public ProductService(ProductRepository repository, ProductMapper mapper,
-                          @Value("${app.page-size:20}") int pageSize) {
-        this.repository = repository;
-        this.mapper = mapper;
-        this.pageSize = pageSize;
-    }
+    @Value("${app.page-size:20}")
+    private int pageSize;
 
     public ProductResponse create(ProductRequest request) {
         Product entity = mapper.toEntity(request);

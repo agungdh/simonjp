@@ -7,6 +7,7 @@ import id.my.agungdh.simonjp.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,13 +25,10 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/product")
 @Tag(name = "Product")
+@RequiredArgsConstructor
 public class ProductResource {
 
     private final ProductService service;
-
-    public ProductResource(ProductService service) {
-        this.service = service;
-    }
 
     @PostMapping
     @Operation(summary = "Buat produk baru")
