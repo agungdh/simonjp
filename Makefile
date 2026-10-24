@@ -23,4 +23,6 @@ seed: ## Run gradle seed task
 reset: ## Reset DB: down, up, seed
 	$(MAKE) down
 	$(MAKE) up
+	@until docker compose exec -T postgres pg_isready -U admin -d simonjp >/dev/null 2>&1; do sleep 1; done
+	@until docker compose exec -T valkey valkey-cli -a admin ping 2>/dev/null | grep -q PONG; do sleep 1; done
 	$(MAKE) seed
