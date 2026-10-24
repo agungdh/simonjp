@@ -6,6 +6,7 @@ import id.my.agungdh.simonjp.dto.BidangResponse;
 import id.my.agungdh.simonjp.dto.CursorPageDTO;
 import id.my.agungdh.simonjp.mapper.BidangMapper;
 import id.my.agungdh.simonjp.repository.BidangRepository;
+import id.my.agungdh.simonjp.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -61,6 +62,7 @@ public class BidangService {
         Bidang entity = repository.findByUuid(uuid)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bidang tidak ditemukan"));
         entity.setDeletedAt(OffsetDateTime.now());
+        CurrentUser.id().ifPresent(entity::setDeletedBy);
         repository.save(entity);
     }
 

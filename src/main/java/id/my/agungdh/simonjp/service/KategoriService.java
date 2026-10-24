@@ -6,6 +6,7 @@ import id.my.agungdh.simonjp.dto.KategoriRequest;
 import id.my.agungdh.simonjp.dto.KategoriResponse;
 import id.my.agungdh.simonjp.mapper.KategoriMapper;
 import id.my.agungdh.simonjp.repository.KategoriRepository;
+import id.my.agungdh.simonjp.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -61,6 +62,7 @@ public class KategoriService {
         Kategori entity = repository.findByUuid(uuid)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Kategori tidak ditemukan"));
         entity.setDeletedAt(OffsetDateTime.now());
+        CurrentUser.id().ifPresent(entity::setDeletedBy);
         repository.save(entity);
     }
 

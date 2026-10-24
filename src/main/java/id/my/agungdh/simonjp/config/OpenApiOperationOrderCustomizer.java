@@ -23,6 +23,9 @@ import java.util.Map;
 @Component
 public class OpenApiOperationOrderCustomizer implements OpenApiCustomizer {
 
+    private static final List<String> AUTH_ORDER = List.of(
+            "/auth/login", "/auth/token", "/auth/me", "/auth/csrf", "/auth/logout");
+
     @Override
     public void customise(OpenAPI openApi) {
         Paths paths = openApi.getPaths();
@@ -40,6 +43,10 @@ public class OpenApiOperationOrderCustomizer implements OpenApiCustomizer {
     }
 
     private static int rank(String path, PathItem pathItem) {
+        int authRank = AUTH_ORDER.indexOf(path);
+        if (authRank >= 0) {
+            return authRank;              // endpoint auth selalu di atas, berurutan sesuai alur
+        }
         boolean itemPath = path.contains("{");
 
         if (pathItem.getGet() != null) {

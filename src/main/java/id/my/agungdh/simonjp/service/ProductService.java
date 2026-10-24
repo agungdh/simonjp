@@ -8,6 +8,7 @@ import id.my.agungdh.simonjp.dto.ProductResponse;
 import id.my.agungdh.simonjp.mapper.ProductMapper;
 import id.my.agungdh.simonjp.repository.KategoriRepository;
 import id.my.agungdh.simonjp.repository.ProductRepository;
+import id.my.agungdh.simonjp.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
@@ -76,6 +77,7 @@ public class ProductService {
         Product entity = repository.findByUuid(uuid)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produk tidak ditemukan"));
         entity.setDeletedAt(OffsetDateTime.now());
+        CurrentUser.id().ifPresent(entity::setDeletedBy);
         repository.save(entity);
     }
 

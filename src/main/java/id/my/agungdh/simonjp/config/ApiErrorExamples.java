@@ -33,6 +33,18 @@ public final class ApiErrorExamples {
     public static final String NOT_FOUND = """
             {"message": "<resource> tidak ditemukan"}""";
 
+    public static final String UNAUTHORIZED = """
+            {"message": "Autentikasi diperlukan"}""";
+
+    public static final String BAD_CREDENTIALS = """
+            {"message": "Username atau password salah"}""";
+
+    public static final String FORBIDDEN = """
+            {"message": "Akses ditolak"}""";
+
+    public static final String INVALID_CSRF = """
+            {"message": "CSRF token tidak valid"}""";
+
     public static final String INTERNAL_ERROR = """
             {"message": "Terjadi kesalahan internal"}""";
 

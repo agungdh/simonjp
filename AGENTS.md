@@ -12,6 +12,7 @@ focuses on what you need when changing code.
 - Spring Boot 4.1.2 (Gradle plugin), Java 25, Gradle Kotlin DSL (`build.gradle.kts`).
 - REST: Spring MVC (`spring-boot-starter-webmvc`); OpenAPI: `springdoc-openapi-starter-webmvc-ui`.
 - Persistence: Spring Data JPA / Hibernate, PostgreSQL, Flyway.
+- Auth: Spring Security (opaque token), Valkey/Redis for token storage (`spring-boot-starter-data-redis`).
 - Lombok (`compileOnly`) + MapStruct, Spring beans (constructor injection).
 - Native image: Liberica NIK via `org.graalvm.buildtools.native` (`./gradlew nativeCompile`);
   CI targets `x86-64-v2` (amd64) and `armv8-a` (arm64) via `--build-args="-march=..."`.
@@ -19,9 +20,9 @@ focuses on what you need when changing code.
 ## Commands
 
 ```shell
-docker compose up -d postgres     # required before tests / dev
+docker compose up -d postgres valkey  # required before tests / dev
 ./gradlew bootRun                # dev mode, http://localhost:8080
-./gradlew test                   # requires a running Postgres
+./gradlew test                   # requires a running Postgres and Valkey
 ./gradlew build                  # build + test
 ./gradlew nativeCompile          # native (Liberica NIK)
 ```
@@ -35,6 +36,9 @@ docker compose up -d postgres     # required before tests / dev
 - Persistence (when added) must configure `spring.datasource.*` for PostgreSQL, set
   `spring.jpa.hibernate.ddl-auto=validate`, and enable Flyway (`spring.flyway.enabled=true`);
   schema changes go through Flyway migrations, never auto-DDL.
+- Redis connection comes from `spring.data.redis.*` (`REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`).
+- Auth is configured under `app.auth.*`: cookie name/secure/same-site, sliding TTLs, BCrypt cost,
+  and optional admin bootstrap. CORS origin comes from `app.cors.allowed-origins`.
 - Do not commit secrets; use environment variables / Spring profiles for environment-specific values.
 
 ## Structure & architecture
@@ -55,6 +59,8 @@ All production code lives in `src/main/java/id/my/agungdh/`:
 | `domain/` | JPA entities. New entities extend `BaseEntity` (identity + audit). Mutable, uses Lombok. | no other application layer |
 | `dto/` | Immutable `record` request/response types, camelCase | no other application layer |
 | `mapper/` | MapStruct interfaces (`componentModel = "spring"`) | `domain/`, `dto/` |
+| `security/` | Filter, principal, token extractor, cookie factory, 401/403 handlers | `repository/`, `domain/`, `dto/`, `config/` |
+| `config/` | Spring configuration, properties, OpenAPI/error annotations | all layers |
 
 Layer rules:
 
@@ -86,6 +92,37 @@ Layer rules:
   `uuid`, and audit columns must be `ignore`d; `uuid`/audit are filled by the service/listener.
 - **Java 25 is the target.** Do not lower `sourceCompatibility`/`targetCompatibility`; use `record`,
   pattern matching, and other stable Java 25 features.
+
+## Authentication & authorization
+
+The API uses **opaque tokens**, not JWT and not `HttpSession`. A token is 32 random bytes
+(base64url); Valkey stores only `auth:sess:<sha256(token)>` → `userId`, so the raw token is never
+persisted and the store never contains user data.
+
+- **Web uses a cookie** (`POST /auth/login`): `HttpOnly`, host-only (no `Domain`), `SameSite=Lax`,
+  `Secure` in production, `__Host-` prefix in production. The token never appears in the response
+  body.
+- **Mobile uses a bearer token** (`POST /auth/token`): the same token and store, returned in the body
+  and sent as `Authorization: Bearer <token>`.
+- `SessionCreationPolicy.STATELESS` is intentional: there is no `JSESSIONID`, no `HttpSession`, and no
+  `spring-session`. Do not call `request.getSession()`, do not store state in the session, and do not
+  add `@SessionAttributes`.
+- User data is **looked up from PostgreSQL on every request** (`enabled`, `role`). Never put the
+  principal in the token or in a cookie; a disabled user or changed role must take effect on the next
+  request.
+- TTL is **sliding**: web 8h, mobile 30d. `AuthTokenRepository.refresh` extends the TTL only when the
+  remaining lifetime is below 50%, to avoid a Valkey write per request. For cookie sessions the
+  server must also re-send `Set-Cookie` with a fresh `Max-Age` whenever it extends the TTL.
+- **CSRF is required for cookie requests** and skipped for bearer requests and `POST /auth/token`
+  (`BearerAwareCsrfMatcher`). The frontend gets the token from `GET /auth/csrf` (body, not cookie),
+  keeps it in memory, and sends it as `X-XSRF-TOKEN`.
+- Never log tokens or cookies, and never accept `role`/audit fields from a request body.
+- `CurrentUser` exposes the authenticated principal for audit (`@CreatedBy`/`@LastModifiedBy` via
+  `JpaAuditConfig`) and for `GET /auth/me`.
+- 401/403 must keep the `ErrorResponse` shape: filter-chain failures are handled by
+  `security/RestAuthenticationEntryPoint`, `RestAccessDeniedHandler`, and `CsrfAccessDeniedHandler`;
+  failures from `@PreAuthorize` are handled by `GlobalExceptionHandler`.
+- Login rate limiting is not implemented yet; add it in `AuthService` when needed.
 
 ## Data model & database conventions
 
@@ -193,9 +230,10 @@ CREATE UNIQUE INDEX ux_contoh_nama_active ON contoh (lower(nama)) WHERE deleted_
    case-insensitive by default; non-string columns keep the plain column.
 5. **Audit is filled by the server when known.** `created_*`/`updated_*`/`deleted_*` are filled in
    one place (an audit listener or `@PrePersist`/`@PreUpdate`) using `OffsetDateTime` (not
-   `LocalDateTime`). The `*_by` columns come from the logged-in principal, never from the request
-   body. While auth is not in place (no principal available), leave `*_by` as `NULL` ("unknown")
-   instead of inventing a value such as `0L`; prepare a `CurrentUser` abstraction when auth is added.
+   `LocalDateTime`). The `*_by` columns come from the logged-in principal
+   (`security/CurrentUser` through the `AuditorAware` bean in `JpaAuditConfig`), never from the
+   request body. When there is no principal (seeder, import job), leave `*_by` as `NULL` ("unknown")
+   instead of inventing a value such as `0L`.
    All audit columns are nullable because data imported from legacy applications may not carry this
    metadata: `NULL` means "unknown", never invent a value, and do not make behavior depend on audit
    values (except `deleted_at` for the soft-delete filter). All
@@ -381,8 +419,8 @@ partial index `(deleted_at) WHERE deleted_at IS NOT NULL`.
    section above).
 3. **Annotation processor order matters** in `build.gradle.kts`: Lombok → `lombok-mapstruct-binding`
    → MapStruct. Changing this order makes mappers fail to see Lombok-generated getters/builders.
-4. **Tests use a real PostgreSQL**, not H2/in-memory. Spring Boot tests (`@SpringBootTest`) fail unless
-   `docker compose up -d postgres` has been run.
+4. **Tests use a real PostgreSQL and Valkey**, not H2/in-memory. Spring Boot tests (`@SpringBootTest`)
+   fail unless `docker compose up -d postgres valkey` has been run.
 5. **Java 25 + virtual threads:** do not lower compatibility; use `record` for DTOs, enable virtual
    threads via `spring.threads.virtual.enabled=true`, and MapStruct for entity ↔ DTO (details in the
    virtual threads section above).
@@ -410,3 +448,10 @@ partial index `(deleted_at) WHERE deleted_at IS NOT NULL`.
 14. **Controller methods follow the Swagger order** — list → create → get one → update → delete, with
     specific feature endpoints declared after `delete`. `config/OpenApiOperationOrderCustomizer`
     enforces that order in the generated spec; details in the REST conventions section.
+15. **Auth is opaque-token based, cookie for web and bearer for mobile.** Tokens live in Valkey as
+    `auth:sess:<sha256(token)>` → `userId`; never store the raw token or user data there, and never
+    reintroduce `HttpSession`/`spring-session` (the app is `STATELESS` on purpose). Details in the
+    authentication section above.
+16. **Cookie requests require CSRF; bearer requests do not.** The frontend reads the CSRF token from
+    the body of `GET /auth/csrf` (cross-subdomain JavaScript cannot read the API cookie) and sends it
+    as `X-XSRF-TOKEN`. Do not disable CSRF globally to make Swagger or a client simpler.

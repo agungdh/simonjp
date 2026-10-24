@@ -8,6 +8,13 @@ spring:
     url: jdbc:postgresql://localhost:5432/simonjp
     username: admin
     password: admin
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:admin}
+      repositories:
+        enabled: false
   jpa:
     hibernate:
       ddl-auto: validate
@@ -17,4 +24,20 @@ spring:
 
 app:
   page-size: 20
-
+  cors:
+    # Origin FE, dipisah koma. Jangan pernah "*" karena cookie memakai credentials.
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  auth:
+    # Di production pakai prefix __Host- (wajib Secure, Path=/, tanpa Domain).
+    cookie-name: ${AUTH_COOKIE_NAME:simonjp_token}
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
+    cookie-same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+    csrf-cookie-name: ${AUTH_CSRF_COOKIE_NAME:XSRF-TOKEN}
+    web-token-ttl: ${AUTH_WEB_TOKEN_TTL:8h}
+    mobile-token-ttl: ${AUTH_MOBILE_TOKEN_TTL:30d}
+    bcrypt-strength: ${AUTH_BCRYPT_STRENGTH:12}
+    bootstrap:
+      enabled: ${AUTH_BOOTSTRAP_ENABLED:false}
+      username: ${APP_ADMIN_USERNAME:}
+      password: ${APP_ADMIN_PASSWORD:}
+      nama: ${APP_ADMIN_NAMA:Administrator}
