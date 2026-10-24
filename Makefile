@@ -9,7 +9,7 @@ else
   COMPOSE := docker compose
 endif
 
-.PHONY: help up down run seed wait reset podman-build quadlet-install quadlet-uninstall quadlet-start quadlet-stop quadlet-status enable-linger backup backup-postgres backup-redis restore-postgres restore-redis
+.PHONY: help up down run seed wait reset quadlet-install quadlet-uninstall quadlet-start quadlet-stop quadlet-status enable-linger backup backup-postgres backup-redis restore-postgres restore-redis
 
 help: ## Show available targets
 	@echo "Usage: make <target>"
@@ -47,10 +47,6 @@ TIMESTAMP := $(shell date +%Y%m%d-%H%M%S)
 # Auto-detect running simonjp postgres/valkey containers (dev compose or quadlet).
 PG_CONTAINER ?= $(shell $(CONTAINER_RUNTIME) ps --format '{{.Names}}' 2>/dev/null | grep -iE 'simonjp.*postgres|postgres.*simonjp' | head -1)
 REDIS_CONTAINER ?= $(shell $(CONTAINER_RUNTIME) ps --format '{{.Names}}' 2>/dev/null | grep -iE 'simonjp.*(valkey|redis)|(valkey|redis).*simonjp' | grep -iv 'commander' | head -1)
-
-podman-build: ## Build native binary and container image
-	./gradlew nativeCompile
-	podman build -t simonjp:latest .
 
 quadlet-install: ## Install quadlet files into $(QUADLET_DIR)
 	@mkdir -p $(QUADLET_DIR)

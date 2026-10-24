@@ -8,10 +8,9 @@ make quadlet-install
 make enable-linger   # optional: run services without an active login
 ```
 
-Build and start the app:
+The app image is pulled from GHCR. Start the services:
 
 ```sh
-make podman-build
 make quadlet-start
 make quadlet-status
 ```
