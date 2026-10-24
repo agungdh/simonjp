@@ -38,7 +38,8 @@ docker compose up -d postgres valkey  # required before tests / dev
   schema changes go through Flyway migrations, never auto-DDL.
 - Redis connection comes from `spring.data.redis.*` (`REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`).
 - Auth is configured under `app.auth.*`: cookie name/secure/same-site, sliding TTLs, and BCrypt
-  cost. CORS origin comes from `app.cors.allowed-origins`.
+  cost. CORS origin comes from `app.cors.allowed-origins` (default `http://localhost:4200`, the
+  Angular dev server).
 - List page size comes from `app.pagination.page-size` (`APP_PAGE_SIZE`, default 20) and is bound
   through `config/PageProperties`. Never hardcode it in a controller or a service.
 - Do not commit secrets; use environment variables / Spring profiles for environment-specific values.

@@ -28,7 +28,7 @@ app:
     page-size: ${APP_PAGE_SIZE:20}
   cors:
     # Origin FE, dipisah koma. Jangan pernah "*" karena cookie memakai credentials.
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200}
   auth:
     # Di production pakai prefix __Host- (wajib Secure, Path=/, tanpa Domain).
     cookie-name: ${AUTH_COOKIE_NAME:simonjp_token}
