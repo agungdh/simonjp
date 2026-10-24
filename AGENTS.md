@@ -13,7 +13,8 @@ focuses on what you need when changing code.
 - REST: Spring MVC (`spring-boot-starter-webmvc`); OpenAPI: `springdoc-openapi-starter-webmvc-ui`.
 - Persistence: Spring Data JPA / Hibernate, PostgreSQL, Flyway.
 - Lombok (`compileOnly`) + MapStruct, Spring beans (constructor injection).
-- Native image: GraalVM/Mandrel via `org.graalvm.buildtools.native` (`./gradlew nativeCompile`).
+- Native image: Liberica NIK via `org.graalvm.buildtools.native` (`./gradlew nativeCompile`);
+  CI targets `x86-64-v2` (amd64) and `armv8-a` (arm64) via `--build-args="-march=..."`.
 
 ## Commands
 
@@ -22,10 +23,19 @@ docker compose up -d postgres     # required before tests / dev
 ./gradlew bootRun                # dev mode, http://localhost:8080
 ./gradlew test                   # requires a running Postgres
 ./gradlew build                  # build + test
-./gradlew nativeCompile          # native (GraalVM/Mandrel)
+./gradlew nativeCompile          # native (Liberica NIK)
 ```
 
 `src/native-test` holds separate integration tests (`*IT`), run only during native builds.
+
+## Configuration
+
+- `src/main/resources/application.yml` holds runtime config; virtual threads are enabled via
+  `spring.threads.virtual.enabled=true`.
+- Persistence (when added) must configure `spring.datasource.*` for PostgreSQL, set
+  `spring.jpa.hibernate.ddl-auto=validate`, and enable Flyway (`spring.flyway.enabled=true`);
+  schema changes go through Flyway migrations, never auto-DDL.
+- Do not commit secrets; use environment variables / Spring profiles for environment-specific values.
 
 ## Structure & architecture
 
@@ -317,7 +327,7 @@ partial index `(deleted_at) WHERE deleted_at IS NOT NULL`.
 ## Rules
 
 1. **The schema is managed by Flyway, not Hibernate.** Hibernate uses
-   `schema-management.strategy=validate`. Schema changes must be migrations in
+   `spring.jpa.hibernate.ddl-auto=validate`. Schema changes must be migrations in
    `src/main/resources/db/migration` (`V1__...sql`, `V2__...sql`, etc.); do not rely on auto-DDL.
    While the project is pre-release, keep one schema migration and fold changes into it instead of
    adding revision migrations (as long as no shared/production database has applied it). Once a
