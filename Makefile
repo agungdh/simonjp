@@ -23,5 +23,4 @@ seed: ## Run gradle seed task
 reset: ## Reset DB: down, up, seed
 	$(MAKE) down
 	$(MAKE) up
-	docker compose up -d --wait postgres valkey
 	$(MAKE) seed
