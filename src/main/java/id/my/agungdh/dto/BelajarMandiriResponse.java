@@ -5,8 +5,6 @@ import java.util.UUID;
 
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
-import id.my.agungdh.dto.PegawaiResponse;
-
 @Schema(description = "Data BelajarMandiri.")
 public record BelajarMandiriResponse(
         @Schema(description = "Identitas publik BelajarMandiri.") UUID uuid,

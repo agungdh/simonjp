@@ -5,8 +5,6 @@ import java.util.UUID;
 
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
-import id.my.agungdh.dto.PegawaiResponse;
-
 @Schema(description = "Data Webinar.")
 public record WebinarResponse(
         @Schema(description = "Identitas publik Webinar.") UUID uuid,
