@@ -236,6 +236,20 @@ and predictability.
   optional `errors`). Validation errors are grouped per field and may contain more than one entry
   per field.
 
+## Error handling
+
+- All errors go through `GlobalExceptionHandler` (`@RestControllerAdvice`); controllers do not build
+  error bodies manually.
+- `ErrorResponse` carries only `message` plus an optional `errors` map. The HTTP status code is
+  conveyed by the response status line and is not duplicated in the body.
+- For `@Valid` validation failures, `errors` is a map of field name -> list of messages, grouped
+  per field, so a single field can report more than one violation. For any other error, `errors`
+  is `null` and only `message` is present.
+- Controllers annotate request bodies with `@Valid`; services throw `ResponseStatusException` (or
+  domain-specific exceptions handled by the advice) for not-found / bad-request cases.
+- Validation messages come from the bean validation annotations; do not hand-build per-field
+  messages in controllers.
+
 ## Pagination (cursor)
 
 **Every** list endpoint uses **cursor pagination**, including small master tables. The goal is a
