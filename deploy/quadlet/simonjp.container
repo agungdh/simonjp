@@ -4,7 +4,7 @@ After=simonjp-postgres.service simonjp-valkey.service
 Requires=simonjp-postgres.service simonjp-valkey.service
 
 [Container]
-Image=ghcr.io/simonjp/simonjp:latest
+Image=ghcr.io/agungdh/simonjp:latest
 ContainerName=simonjp-app
 Network=simonjp.network
 PublishPort=127.0.0.1:8080:8080
