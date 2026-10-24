@@ -22,13 +22,13 @@ public class GlobalExceptionHandler {
             status = HttpStatus.INTERNAL_SERVER_ERROR;
         }
         String message = ex.getReason() != null ? ex.getReason() : status.getReasonPhrase();
-        return ResponseEntity.status(status).body(new ErrorResponse(status.value(), message));
+        return ResponseEntity.status(status).body(new ErrorResponse(message));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), "Data duplikat atau melanggar constraint"));
+                .body(new ErrorResponse("Data duplikat atau melanggar constraint"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -40,18 +40,18 @@ public class GlobalExceptionHandler {
             message = "Validasi gagal";
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message));
+                .body(new ErrorResponse(message));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleUnreadable(HttpMessageNotReadableException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "Body request tidak valid"));
+                .body(new ErrorResponse("Body request tidak valid"));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Terjadi kesalahan internal"));
+                .body(new ErrorResponse("Terjadi kesalahan internal"));
     }
 }
