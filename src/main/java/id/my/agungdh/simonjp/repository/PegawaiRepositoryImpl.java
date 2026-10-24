@@ -22,10 +22,11 @@ import java.util.List;
  *
  * <p>Semua filter, pencarian, urutan, dan limit dikerjakan di database. Search adalah satu kata
  * kunci untuk FE, jadi kolom teks pegawai digabung dengan kolom teks {@code bidang} dan
- * {@code pangkat_golongan} lewat {@code LEFT JOIN}; predikatnya ada di {@code WHERE}. Relasi yang
- * {@code NULL} otomatis tidak cocok dengan pola search, tetapi pegawai tetap bisa ditemukan lewat
- * kolomnya sendiri. Filter exact {@code bidangUuid}/{@code pangkatGolonganUuid} memakai
- * {@code INNER JOIN} karena memang butuh relasi tersebut.
+ * {@code pangkat_golongan} lewat {@code LEFT JOIN}; predikatnya ada di {@code WHERE}. Semua join
+ * memakai {@code LEFT} supaya bentuk query seragam: relasi yang {@code NULL} tidak cocok dengan
+ * pola search, tetapi pegawai tetap bisa ditemukan lewat kolomnya sendiri. Filter exact
+ * {@code bidangUuid}/{@code pangkatGolonganUuid} tetap benar karena {@code uuid = ?} menolak
+ * {@code NULL}.
  *
  * <p>Query ID dan query fetch dipisah supaya join untuk search tidak terduplikasi dengan join dari
  * fetch graph. Query fetch hanya mengambil baris yang sudah terpilih, jadi urutan dan limit tetap
@@ -71,13 +72,13 @@ public class PegawaiRepositoryImpl implements PegawaiRepositoryCustom {
         String pattern = filter.searchPattern();
         Join<Pegawai, Bidang> bidang = null;
         Join<Pegawai, PangkatGolongan> pangkat = null;
-        // Saat search, LEFT JOIN supaya relasi NULL tidak membuang baris. Tanpa search, filter
-        // exact *Uuid memang membutuhkan relasinya, jadi INNER JOIN.
+        // Semua join LEFT supaya seragam dan mudah dibaca. Filter exact tetap aman karena
+        // `uuid = ?` menolak NULL, jadi baris tanpa relasi otomatis tidak lolos.
         if (pattern != null || filter.bidangUuid() != null) {
-            bidang = root.join("bidang", pattern != null ? JoinType.LEFT : JoinType.INNER);
+            bidang = root.join("bidang", JoinType.LEFT);
         }
         if (pattern != null || filter.pangkatGolonganUuid() != null) {
-            pangkat = root.join("pangkatGolongan", pattern != null ? JoinType.LEFT : JoinType.INNER);
+            pangkat = root.join("pangkatGolongan", JoinType.LEFT);
         }
         if (filter.bidangUuid() != null) {
             predicates.add(cb.equal(bidang.get("uuid"), filter.bidangUuid()));
