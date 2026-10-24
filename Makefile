@@ -1,0 +1,21 @@
+.DEFAULT_GOAL := help
+
+.PHONY: help up down start seed
+
+help: ## Show available targets
+	@echo "Usage: make <target>"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
+
+up: ## Start postgres (docker compose up -d)
+	docker compose up -d
+
+down: ## Stop and remove containers and volumes
+	docker compose down -v
+
+start: ## Build jar and run it
+	./gradlew bootJar
+	java -jar build/libs/simonjp-0.0.1-SNAPSHOT.jar
+
+seed: ## Run gradle seed task
+	./gradlew seed
