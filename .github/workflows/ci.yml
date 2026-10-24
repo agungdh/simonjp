@@ -43,10 +43,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up Mandrel JDK 25
+      - name: Set up Liberica NIK 25
         uses: graalvm/setup-graalvm@v1
         with:
-          distribution: mandrel
+          distribution: liberica
           java-version: '25'
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
