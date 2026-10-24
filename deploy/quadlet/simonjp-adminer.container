@@ -1,0 +1,17 @@
+[Unit]
+Description=SimonJP Adminer
+After=simonjp-postgres.service
+Requires=simonjp-postgres.service
+
+[Container]
+Image=docker.io/adminer:latest
+ContainerName=simonjp-adminer
+Network=simonjp.network
+PublishPort=127.0.0.1:8083:8080
+Environment=ADMINER_DEFAULT_SERVER=simonjp-postgres
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

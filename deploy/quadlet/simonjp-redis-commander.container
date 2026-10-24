@@ -1,0 +1,21 @@
+[Unit]
+Description=SimonJP Redis Commander
+After=simonjp-valkey.service
+Requires=simonjp-valkey.service
+
+[Container]
+Image=docker.io/rediscommander/redis-commander:latest
+ContainerName=simonjp-redis-commander
+Network=simonjp.network
+PublishPort=127.0.0.1:8084:8081
+Environment=REDIS_HOST=simonjp-valkey
+Environment=REDIS_PORT=6379
+Environment=REDIS_PASSWORD=admin
+Environment=HTTP_USER=admin
+Environment=HTTP_PASSWORD=admin
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

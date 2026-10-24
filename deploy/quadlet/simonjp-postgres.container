@@ -1,0 +1,24 @@
+[Unit]
+Description=SimonJP PostgreSQL
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+Image=docker.io/library/postgres:18
+ContainerName=simonjp-postgres
+Network=simonjp.network
+Volume=simonjp-postgres.volume:/var/lib/postgresql
+Environment=POSTGRES_USER=admin
+Environment=POSTGRES_PASSWORD=admin
+Environment=POSTGRES_DB=simonjp
+PublishPort=127.0.0.1:5432:5432
+HealthCmd=CMD-SHELL pg_isready -U admin -d simonjp
+HealthInterval=10s
+HealthTimeout=5s
+HealthRetries=5
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target
