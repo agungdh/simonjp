@@ -247,6 +247,14 @@ and predictability.
   omitted entirely (no `"fields": null`), so the body only contains `message`.
 - Controllers annotate request bodies with `@Valid`; services throw `ResponseStatusException` (or
   domain-specific exceptions handled by the advice) for not-found / bad-request cases.
+- OpenAPI error documentation uses meta-annotations in `config/`: `@ApiValidationError` (400 with
+  body), `@ApiBadRequest` (400 invalid path parameter), `@ApiInvalidCursor` (400 cursor),
+  `@ApiNotFound` (404), and `@ApiInternalError` (500). Body examples live in `ApiErrorExamples`;
+  do not duplicate JSON examples inside controllers.
+- springdoc 3.1.0 stops inferring the success response from the return type as soon as an operation
+  has `@ApiResponses`, so every endpoint must also declare its success code (`200`/`201`/`204`) with
+  `@ApiResponse` and no `content`; the schema is still resolved from the return type, including
+  generic wrappers such as `CursorPageDTO<T>`.
 - Validation messages come from the bean validation annotations; do not hand-build per-field
   messages in controllers.
 

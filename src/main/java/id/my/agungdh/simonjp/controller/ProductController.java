@@ -1,10 +1,16 @@
 package id.my.agungdh.simonjp.controller;
 
+import id.my.agungdh.simonjp.config.ApiBadRequest;
+import id.my.agungdh.simonjp.config.ApiInternalError;
+import id.my.agungdh.simonjp.config.ApiInvalidCursor;
+import id.my.agungdh.simonjp.config.ApiNotFound;
+import id.my.agungdh.simonjp.config.ApiValidationError;
 import id.my.agungdh.simonjp.dto.CursorPageDTO;
 import id.my.agungdh.simonjp.dto.ProductRequest;
 import id.my.agungdh.simonjp.dto.ProductResponse;
 import id.my.agungdh.simonjp.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,24 +38,39 @@ public class ProductController {
 
     @PostMapping
     @Operation(summary = "Buat produk baru")
+    @ApiResponse(responseCode = "201", description = "Produk dibuat")
+    @ApiValidationError
+    @ApiInternalError
     public ResponseEntity<ProductResponse> create(@Valid @RequestBody ProductRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
     }
 
     @GetMapping("/{uuid}")
     @Operation(summary = "Ambil produk berdasarkan UUID")
+    @ApiResponse(responseCode = "200", description = "Produk ditemukan")
+    @ApiBadRequest
+    @ApiNotFound
+    @ApiInternalError
     public ProductResponse get(@PathVariable UUID uuid) {
         return service.get(uuid);
     }
 
     @PutMapping("/{uuid}")
     @Operation(summary = "Perbarui produk (full replace)")
+    @ApiResponse(responseCode = "200", description = "Produk diperbarui")
+    @ApiValidationError
+    @ApiNotFound
+    @ApiInternalError
     public ProductResponse update(@PathVariable UUID uuid, @Valid @RequestBody ProductRequest request) {
         return service.update(uuid, request);
     }
 
     @DeleteMapping("/{uuid}")
     @Operation(summary = "Hapus produk (soft delete)")
+    @ApiResponse(responseCode = "204", description = "Produk dihapus")
+    @ApiBadRequest
+    @ApiNotFound
+    @ApiInternalError
     public ResponseEntity<Void> delete(@PathVariable UUID uuid) {
         service.delete(uuid);
         return ResponseEntity.noContent().build();
@@ -57,6 +78,9 @@ public class ProductController {
 
     @GetMapping
     @Operation(summary = "Daftar produk (cursor pagination)")
+    @ApiResponse(responseCode = "200", description = "Daftar produk")
+    @ApiInvalidCursor
+    @ApiInternalError
     public CursorPageDTO<ProductResponse> list(@RequestParam(required = false) UUID cursor) {
         return service.list(cursor);
     }
