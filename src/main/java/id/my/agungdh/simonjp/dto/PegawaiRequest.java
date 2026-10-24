@@ -1,6 +1,7 @@
 package id.my.agungdh.simonjp.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import id.my.agungdh.simonjp.validation.ExistingBidang;
 import jakarta.validation.constraints.NotBlank;
 
 import java.util.UUID;
@@ -18,6 +19,7 @@ public record PegawaiRequest(
         String email,
 
         @Schema(description = "UUID bidang pegawai")
+        @ExistingBidang
         UUID bidangUuid
 ) {
 }
