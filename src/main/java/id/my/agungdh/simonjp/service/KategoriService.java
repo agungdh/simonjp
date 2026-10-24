@@ -29,6 +29,9 @@ public class KategoriService {
     private final KategoriMapper mapper;
 
     public KategoriResponse create(KategoriRequest request) {
+        if (repository.findByNamaIgnoreCase(request.nama()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nama kategori sudah digunakan");
+        }
         Kategori entity = mapper.toEntity(request);
         repository.save(entity);
         return mapper.toResponse(entity);
@@ -44,6 +47,11 @@ public class KategoriService {
     public KategoriResponse update(UUID uuid, KategoriRequest request) {
         Kategori entity = repository.findByUuid(uuid)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Kategori tidak ditemukan"));
+        repository.findByNamaIgnoreCase(request.nama())
+                .filter(existing -> !existing.getUuid().equals(uuid))
+                .ifPresent(existing -> {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nama kategori sudah digunakan");
+                });
         mapper.updateEntity(request, entity);
         repository.save(entity);
         return mapper.toResponse(entity);

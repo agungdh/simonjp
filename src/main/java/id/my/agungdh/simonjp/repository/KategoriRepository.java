@@ -13,6 +13,8 @@ public interface KategoriRepository extends JpaRepository<Kategori, Long> {
 
     Optional<Kategori> findByUuid(UUID uuid);
 
+    Optional<Kategori> findByNamaIgnoreCase(String nama);
+
     @Query("SELECT k FROM Kategori k WHERE (:cursorId IS NULL OR k.id < :cursorId) ORDER BY k.id DESC")
     List<Kategori> findPage(@Param("cursorId") Long cursorId, org.springframework.data.domain.Pageable pageable);
 }

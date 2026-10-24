@@ -34,6 +34,9 @@ public class ProductService {
     private int pageSize;
 
     public ProductResponse create(ProductRequest request) {
+        if (repository.findByNamaIgnoreCase(request.nama()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nama produk sudah digunakan");
+        }
         Product entity = mapper.toEntity(request);
         entity.setKategori(resolveKategori(request.kategoriUuid()));
         repository.save(entity);
@@ -50,6 +53,11 @@ public class ProductService {
     public ProductResponse update(UUID uuid, ProductRequest request) {
         Product entity = repository.findByUuid(uuid)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produk tidak ditemukan"));
+        repository.findByNamaIgnoreCase(request.nama())
+                .filter(existing -> !existing.getUuid().equals(uuid))
+                .ifPresent(existing -> {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nama produk sudah digunakan");
+                });
         mapper.updateEntity(request, entity);
         entity.setKategori(resolveKategori(request.kategoriUuid()));
         repository.save(entity);

@@ -13,6 +13,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     Optional<Product> findByUuid(UUID uuid);
 
+    Optional<Product> findByNamaIgnoreCase(String nama);
+
     @Query("SELECT p FROM Product p WHERE (:cursorId IS NULL OR p.id < :cursorId) ORDER BY p.id DESC")
     List<Product> findPage(@Param("cursorId") Long cursorId, org.springframework.data.domain.Pageable pageable);
 }

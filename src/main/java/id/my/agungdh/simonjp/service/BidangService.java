@@ -29,6 +29,9 @@ public class BidangService {
     private final BidangMapper mapper;
 
     public BidangResponse create(BidangRequest request) {
+        if (repository.findByNamaIgnoreCase(request.nama()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nama bidang sudah digunakan");
+        }
         Bidang entity = mapper.toEntity(request);
         repository.save(entity);
         return mapper.toResponse(entity);
@@ -44,6 +47,11 @@ public class BidangService {
     public BidangResponse update(UUID uuid, BidangRequest request) {
         Bidang entity = repository.findByUuid(uuid)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bidang tidak ditemukan"));
+        repository.findByNamaIgnoreCase(request.nama())
+                .filter(existing -> !existing.getUuid().equals(uuid))
+                .ifPresent(existing -> {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nama bidang sudah digunakan");
+                });
         mapper.updateEntity(request, entity);
         repository.save(entity);
         return mapper.toResponse(entity);

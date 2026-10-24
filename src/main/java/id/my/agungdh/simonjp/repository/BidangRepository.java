@@ -13,6 +13,8 @@ public interface BidangRepository extends JpaRepository<Bidang, Long> {
 
     Optional<Bidang> findByUuid(UUID uuid);
 
+    Optional<Bidang> findByNamaIgnoreCase(String nama);
+
     @Query("SELECT b FROM Bidang b WHERE (:cursorId IS NULL OR b.id < :cursorId) ORDER BY b.id DESC")
     List<Bidang> findPage(@Param("cursorId") Long cursorId, org.springframework.data.domain.Pageable pageable);
 }
