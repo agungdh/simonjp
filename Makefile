@@ -7,8 +7,9 @@ help: ## Show available targets
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-10s %s\n", $$1, $$2}'
 
-up: ## Start postgres (docker compose up -d)
+up: ## Start services (wait only postgres & valkey)
 	docker compose up -d
+	docker compose up -d --wait postgres valkey
 
 down: ## Stop and remove containers and volumes
 	docker compose down -v
@@ -21,6 +22,6 @@ seed: ## Run gradle seed task
 	./gradlew seed
 
 reset: ## Reset DB: down, up, seed
-	docker compose down -v
-	docker compose up -d --wait
-	./gradlew seed
+	$(MAKE) down
+	$(MAKE) up
+	$(MAKE) seed
