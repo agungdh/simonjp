@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help up down start seed
+.PHONY: help up down start seed reset
 
 help: ## Show available targets
 	@echo "Usage: make <target>"
@@ -18,4 +18,9 @@ start: ## Build jar and run it
 	java -jar build/libs/simonjp-0.0.1-SNAPSHOT.jar
 
 seed: ## Run gradle seed task
+	./gradlew seed
+
+reset: ## Reset DB: down, up, seed
+	docker compose down -v
+	docker compose up -d --wait
 	./gradlew seed
