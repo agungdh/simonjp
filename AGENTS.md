@@ -42,14 +42,14 @@ docker compose up -d postgres     # required before tests / dev
 A simple layered architecture with one-way dependencies:
 
 ```text
-resource/ → service/ → repository/ → domain/
+controller/ → service/ → repository/ → domain/
 ```
 
 All production code lives in `src/main/java/id/my/agungdh/`:
 
 | Package | Contents | May depend on |
 | --- | --- | --- |
-| `resource/` | Spring MVC resources (controllers), HTTP + DTO only | `service/`, `dto/` |
+| `controller/` | Spring MVC controllers, HTTP + DTO only | `service/`, `dto/` |
 | `service/` | Business logic, transactions, resolving `*Uuid` to entities | `repository/`, `domain/`, `dto/`, `mapper/` |
 | `repository/` | Database access (Hibernate/`EntityManager`), queries | `domain/` |
 | `domain/` | JPA entities. New entities extend `BaseEntity` (identity + audit). Mutable, uses Lombok. | no other application layer |
@@ -58,13 +58,13 @@ All production code lives in `src/main/java/id/my/agungdh/`:
 
 Layer rules:
 
-1. Resources only handle HTTP, input validation, and DTOs; never access `EntityManager` or
+1. Controllers only handle HTTP, input validation, and DTOs; never access `EntityManager` or
    repositories directly.
 2. Services own business logic and transaction boundaries (`@Transactional`); they may work with
-   entities, but anything returned to a resource must be a DTO.
-3. Repositories contain SQL/JPA only and return entities, not DTOs; never import `resource/` or
+   entities, but anything returned to a controller must be a DTO.
+3. Repositories contain SQL/JPA only and return entities, not DTOs; never import `controller/` or
    `dto/`.
-4. Domain must not import `service/`, `repository/`, `resource/`, or `dto/`.
+4. Domain must not import `service/`, `repository/`, `controller/`, or `dto/`.
 5. Do not add hexagonal/clean-architecture ports, adapters, or use-case interfaces; this simple
    layering is enough unless there is a real need.
 
@@ -78,11 +78,11 @@ Layer rules:
   computation in this service. Delegate it to another service over an HTTP client; the I/O call
   remains safe on a virtual thread.
 - Virtual threads do not add database capacity; still size the connection pool.
-- `@Transactional` stays in the service layer, never in resources.
+- `@Transactional` stays in the service layer, never in controllers.
 - **DTOs are always immutable `record`s**, including requests, responses, and pagination wrappers.
   Do not use Lombok/`@Data` in DTOs. Fields are camelCase and annotated with `@Schema` for OpenAPI.
 - **Entity ↔ DTO conversion goes through MapStruct only**, in `mapper/` (`componentModel = "spring"`).
-  Resources must not map manually; services use the mappers. When mapping request → entity, `id`,
+  Controllers must not map manually; services use the mappers. When mapping request → entity, `id`,
   `uuid`, and audit columns must be `ignore`d; `uuid`/audit are filled by the service/listener.
 - **Java 25 is the target.** Do not lower `sourceCompatibility`/`targetCompatibility`; use `record`,
   pattern matching, and other stable Java 25 features.
@@ -334,7 +334,7 @@ partial index `(deleted_at) WHERE deleted_at IS NOT NULL`.
    adding revision migrations (as long as no shared/production database has applied it). Once a
    migration has shipped, treat it as immutable and add a new version instead.
    Do not modify a migration that has already been applied outside local/dev databases.
-2. **Entities must not leave the REST layer.** Resources return DTOs only; internal fields such as
+2. **Entities must not leave the REST layer.** Controllers return DTOs only; internal fields such as
    `id`, all `*_id`, and every audit column (`created_*`, `updated_*`, `deleted_*`) are deliberately
    absent from DTOs. The public identity that clients use is `uuid`/`*Uuid` (see the data model
    section above).

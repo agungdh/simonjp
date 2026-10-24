@@ -1,4 +1,4 @@
-package id.my.agungdh.simonjp.resource;
+package id.my.agungdh.simonjp.controller;
 
 import id.my.agungdh.simonjp.dto.CursorPageDTO;
 import id.my.agungdh.simonjp.dto.ProductRequest;
@@ -26,7 +26,7 @@ import java.util.UUID;
 @RequestMapping("/product")
 @Tag(name = "Product")
 @RequiredArgsConstructor
-public class ProductResource {
+public class ProductController {
 
     private final ProductService service;
 
