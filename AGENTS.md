@@ -353,11 +353,13 @@ semantics (`%kata%`), not prefix or full-text search:
   (`nama`, `deskripsi`) and `pangkat-golongan` searches (`jenjang`, `pangkat`, `golongan`, `ruang`)
   stay on their own tables. The FE only has one search field, so do not turn this into per-column
   parameters.
-- `PegawaiRepositoryImpl` uses `LEFT JOIN` to `bidang` and `pangkat_golongan` and puts the search
-  predicate in `WHERE` (`OR` across own and joined columns). Keep this simple shape for now; the
-  `LEFT JOIN` means a pegawai with `NULL` bidang/pangkat still matches through its own columns.
-  Only split the search into per-source ID queries if `EXPLAIN` proves the joined `OR` is a real
-  problem at production scale — do not pre-optimize for hypothetical millions of rows.
+- `PegawaiRepositoryImpl` uses `LEFT JOIN` to `bidang` and `pangkat_golongan` for search and puts
+  the predicate in `WHERE` (`OR` across own and joined columns). A `NULL` relation simply does not
+  match the pattern, while the pegawai can still match through its own columns. Exact
+  `bidangUuid`/`pangkatGolonganUuid` filters use `INNER JOIN` because they require the relation.
+  Keep this simple shape for now; only split the search into per-source ID queries if `EXPLAIN`
+  proves the joined `OR` is a real problem at production scale — do not pre-optimize for
+  hypothetical millions of rows.
 - The `bidangUuid`/`pangkatGolonganUuid` params remain exact filters and can be combined with the
   same `search`.
 - Structured filters are exact and combined with **AND**; `search` itself is an **OR** across its

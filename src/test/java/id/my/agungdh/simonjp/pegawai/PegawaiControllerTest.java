@@ -422,6 +422,7 @@ class PegawaiControllerTest {
         pegawai.setStatus(PegawaiStatus.AKTIF);
         pegawaiRepository.save(pegawai);
 
+        // LEFT JOIN: relasi NULL tidak menghalangi pencocokan lewat kolom pegawai sendiri.
         mvc.perform(get("/pegawai")
                         .param("search", token)
                         .header("Authorization", "Bearer " + adminBearer))

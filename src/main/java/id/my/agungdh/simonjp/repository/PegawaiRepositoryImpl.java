@@ -22,8 +22,10 @@ import java.util.List;
  *
  * <p>Semua filter, pencarian, urutan, dan limit dikerjakan di database. Search adalah satu kata
  * kunci untuk FE, jadi kolom teks pegawai digabung dengan kolom teks {@code bidang} dan
- * {@code pangkat_golongan} lewat {@code LEFT JOIN}; predikatnya ada di {@code WHERE}. Join memakai
- * {@code LEFT} supaya pegawai tanpa bidang/pangkat tetap bisa ditemukan lewat kolomnya sendiri.
+ * {@code pangkat_golongan} lewat {@code LEFT JOIN}; predikatnya ada di {@code WHERE}. Relasi yang
+ * {@code NULL} otomatis tidak cocok dengan pola search, tetapi pegawai tetap bisa ditemukan lewat
+ * kolomnya sendiri. Filter exact {@code bidangUuid}/{@code pangkatGolonganUuid} memakai
+ * {@code INNER JOIN} karena memang butuh relasi tersebut.
  *
  * <p>Query ID dan query fetch dipisah supaya join untuk search tidak terduplikasi dengan join dari
  * fetch graph. Query fetch hanya mengambil baris yang sudah terpilih, jadi urutan dan limit tetap
@@ -69,11 +71,13 @@ public class PegawaiRepositoryImpl implements PegawaiRepositoryCustom {
         String pattern = filter.searchPattern();
         Join<Pegawai, Bidang> bidang = null;
         Join<Pegawai, PangkatGolongan> pangkat = null;
+        // Saat search, LEFT JOIN supaya relasi NULL tidak membuang baris. Tanpa search, filter
+        // exact *Uuid memang membutuhkan relasinya, jadi INNER JOIN.
         if (pattern != null || filter.bidangUuid() != null) {
-            bidang = root.join("bidang", JoinType.LEFT);
+            bidang = root.join("bidang", pattern != null ? JoinType.LEFT : JoinType.INNER);
         }
         if (pattern != null || filter.pangkatGolonganUuid() != null) {
-            pangkat = root.join("pangkatGolongan", JoinType.LEFT);
+            pangkat = root.join("pangkatGolongan", pattern != null ? JoinType.LEFT : JoinType.INNER);
         }
         if (filter.bidangUuid() != null) {
             predicates.add(cb.equal(bidang.get("uuid"), filter.bidangUuid()));
