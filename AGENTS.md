@@ -158,7 +158,7 @@ CREATE INDEX idx_contoh_uuid ON contoh USING hash (uuid);
 CREATE INDEX idx_contoh_induk_id ON contoh (induk_id);
 
 -- Unique only for active rows, so values can be reused after a soft delete.
-CREATE UNIQUE INDEX ux_contoh_nama_active ON contoh (nama) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX ux_contoh_nama_active ON contoh (lower(nama)) WHERE deleted_at IS NULL;
 ```
 
 ### Naming
@@ -188,8 +188,9 @@ CREATE UNIQUE INDEX ux_contoh_nama_active ON contoh (nama) WHERE deleted_at IS N
    automatically; native queries must add the predicate themselves. Do not use `DELETE FROM` for
    domain data.
 4. **Unique = partial index.** Unique indexes always use `WHERE deleted_at IS NULL` so a unique
-   value can be reused after the old row is deleted. For case-insensitive uniqueness, use an
-   expression index on `lower(column)` with the same predicate.
+   value can be reused after the old row is deleted. For string columns, use an expression index
+   on `lower(column)` (both for uniqueness and for any filter/lookup index) so comparisons are
+   case-insensitive by default; non-string columns keep the plain column.
 5. **Audit is filled by the server when known.** `created_*`/`updated_*`/`deleted_*` are filled in
    one place (an audit listener or `@PrePersist`/`@PreUpdate`) using `OffsetDateTime` (not
    `LocalDateTime`). The `*_by` columns come from the logged-in principal, never from the request

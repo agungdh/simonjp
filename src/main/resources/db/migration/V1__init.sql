@@ -16,4 +16,4 @@ CREATE TABLE product (
 
 CREATE INDEX idx_product_uuid ON product USING hash (uuid);
 
-CREATE UNIQUE INDEX ux_product_nama_active ON product (nama) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX ux_product_nama_active ON product (lower(nama)) WHERE deleted_at IS NULL;
