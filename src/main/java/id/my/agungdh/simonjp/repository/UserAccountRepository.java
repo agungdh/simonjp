@@ -17,14 +17,17 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, Long> 
      */
     Optional<UserAccount> findByUsernameIgnoreCase(String username);
 
+    boolean existsByUsernameIgnoreCase(String username);
+
     /** Akun milik satu pegawai, dipakai saat pegawai dihapus. */
     Optional<UserAccount> findByPegawai(Pegawai pegawai);
 
     /**
-     * Akun beserta pegawai dan bidangnya. Dipakai endpoint {@code /auth/me} karena
-     * {@code open-in-view} dimatikan sehingga relasi lazy tidak bisa dimuat di controller.
+     * Akun beserta pegawai, bidang, dan pangkat/golongan. Dipakai endpoint {@code /auth/me}
+     * dan {@code /profile} karena {@code open-in-view} dimatikan sehingga relasi lazy tidak
+     * bisa dimuat di controller.
      */
-    @EntityGraph(attributePaths = {"pegawai", "pegawai.bidang"})
+    @EntityGraph(attributePaths = {"pegawai", "pegawai.bidang", "pegawai.pangkatGolongan"})
     @Query("SELECT u FROM UserAccount u WHERE u.id = :id")
     Optional<UserAccount> findWithRelationsById(@Param("id") Long id);
 }

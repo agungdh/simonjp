@@ -6,7 +6,7 @@ import id.my.agungdh.simonjp.dto.UserPegawaiResponse;
 import id.my.agungdh.simonjp.dto.UserResponse;
 import org.mapstruct.Mapper;
 
-@Mapper(componentModel = "spring", uses = BidangMapper.class)
+@Mapper(componentModel = "spring", uses = {BidangMapper.class, PangkatGolonganMapper.class})
 public interface UserMapper {
 
     UserResponse toResponse(UserAccount entity);

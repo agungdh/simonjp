@@ -74,12 +74,13 @@ class TokenRefreshTest {
 
         Pegawai pegawai = new Pegawai();
         pegawai.setNama("Refresh User");
+        pegawai.setNip("NIP-" + UUID.randomUUID());
         pegawaiRepository.save(pegawai);
 
         UserAccount user = new UserAccount();
         user.setUsername(username);
         user.setPasswordHash(passwordEncoder.encode(PASSWORD));
-        user.setRole(Role.VIEWER);
+        user.setRole(Role.PEGAWAI);
         user.setPegawai(pegawai);
         userRepository.save(user);
         userId = user.getId();

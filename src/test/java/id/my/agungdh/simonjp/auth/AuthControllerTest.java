@@ -233,9 +233,10 @@ class AuthControllerTest {
         UserAccount deleted = new UserAccount();
         deleted.setUsername("deleted-" + UUID.randomUUID());
         deleted.setPasswordHash(passwordEncoder.encode(PASSWORD));
-        deleted.setRole(Role.VIEWER);
+        deleted.setRole(Role.PEGAWAI);
         Pegawai pegawai = new Pegawai();
         pegawai.setNama("Deleted User");
+        pegawai.setNip("NIP-" + UUID.randomUUID());
         pegawaiRepository.save(pegawai);
         deleted.setPegawai(pegawai);
         deleted.setDeletedAt(OffsetDateTime.now());

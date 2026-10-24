@@ -14,7 +14,7 @@ CREATE TABLE user_account (
     deleted_by    BIGINT,
 
     CONSTRAINT fk_user_account_pegawai_id FOREIGN KEY (pegawai_id) REFERENCES pegawai(id),
-    CONSTRAINT ck_user_account_role CHECK (role IN ('ADMIN', 'OPERATOR', 'VIEWER'))
+    CONSTRAINT ck_user_account_role CHECK (role IN ('ADMIN', 'PEGAWAI'))
 );
 
 CREATE INDEX idx_user_account_uuid ON user_account USING hash (uuid);

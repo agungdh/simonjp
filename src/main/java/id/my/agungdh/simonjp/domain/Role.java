@@ -6,6 +6,5 @@ package id.my.agungdh.simonjp.domain;
  */
 public enum Role {
     ADMIN,
-    OPERATOR,
-    VIEWER
+    PEGAWAI
 }

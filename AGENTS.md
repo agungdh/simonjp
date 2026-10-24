@@ -115,29 +115,48 @@ persisted and the store never contains user data.
   pegawai. The account table stores only `username`, `password_hash`, `role`, and the FK: there is
   no `nama` (read it from the pegawai) and no `enabled` flag (soft delete via `deleted_at` replaces
   it). The FK lives on `user_account` as `pegawai_id`; do not add `user_account_id` to `pegawai`.
+- **Username is always the NIP.** The account is created and updated together with the pegawai in
+  `POST`/`PUT /pegawai`; there is no separate `/user` endpoint and no account-only `DELETE`. Changing
+  the NIP renames the username (`PegawaiService` keeps them in sync). Role values are `ADMIN` and
+  `PEGAWAI`, stored in `user_account.role`.
+- **Password is optional in `POST`/`PUT /pegawai`.** On create an empty password means "use the
+  NIP"; on update it means "keep the current password". This is the documented exception to
+  full-replace semantics because a credential is never cleared. An admin password reset revokes all
+  tokens of that account.
 - **Deleting a pegawai soft-deletes its account and revokes its tokens.** Soft-deleting the pegawai
   row alone is not enough, because clients could keep using the account; `PegawaiService.delete`
   calls `UserAccountService.softDeleteByPegawai`, which sets `deleted_at`/`deleted_by` and calls
   `AuthTokenRepository.revokeAll`. Deleting the account on its own is not part of the API; account
-  management follows the pegawai CRUD.
-- **`/auth/login`, `/auth/token`, and `/auth/me` return the pegawai with its bidang.** `UserResponse`
-  embeds `UserPegawaiResponse` (`uuid`, `nama`, `nip`, `email`, `bidang`), and `UserMapper` loads the
-  relation through MapStruct (`BidangMapper` for the nested bidang). Because `open-in-view` is
-  disabled, `AuthService.me()` re-reads the user with the `pegawai` and `pegawai.bidang` entity graph
-  instead of reading lazy relations from the principal. The `/pegawai` endpoints keep the leaner
-  `PegawaiResponse` with `bidangUuid`.
+  management follows the pegawai CRUD. An admin cannot delete or demote their own account.
+- **`/auth/login`, `/auth/token`, and `/auth/me` return the pegawai with its bidang and
+  pangkat/golongan.** `UserResponse` embeds `UserPegawaiResponse` (`uuid`, `nama`, `nip`, `email`,
+  `jabatan`, `peran`, `status`, `kategoriJabatan`, `kategoriKebutuhanJamPelatihan`, `bidang`, and
+  `pangkatGolongan`), and `UserMapper` loads the relations through MapStruct. Because `open-in-view`
+  is disabled, `AuthService.me()` re-reads the user with the `pegawai`, `pegawai.bidang`, and
+  `pegawai.pangkatGolongan` entity graph instead of reading lazy relations from the principal. The
+  `/pegawai` endpoints keep the leaner `PegawaiResponse` with `bidangUuid`/`pangkatGolonganUuid`
+  plus the account `username`/`role`.
+- **Self-service lives in `/profile`.** `GET /profile`, `PUT /profile`, and `PUT /profile/password`
+  operate on the pegawai of the authenticated user. `PUT /profile` never accepts `role`/`status`, so
+  a user cannot escalate their own access; `PUT /profile/password` requires the current password and
+  revokes every session afterwards.
+- **Only `ADMIN` may write.** `POST`/`PUT`/`DELETE` on `/pegawai` and `/pangkat-golongan` use
+  `@PreAuthorize("hasRole('ADMIN')")`; `PEGAWAI` is read-only there but can always read the lists and
+  manage their own `/profile`.
 - The seeded admin is also a pegawai: `SeedService` (profile `seed`, `./gradlew seed`) creates the
-  `admin` account (password `admin`) with a pegawai named `Administrator` (`nip`/`email`/`bidang`
-  left `NULL`), in one transaction. It runs before the sample-data guard, so the admin also exists
-  when the bulk data is already present. There is no account without a pegawai, including seeded
-  accounts.
+  `admin` account (password `admin`, role `ADMIN`) with a pegawai named `Administrator` (`nip`
+  `admin`, `email`/`bidang` left `NULL`), in one transaction. The 100 sample pegawai also get
+  accounts (`username` = NIP, password `pegawai`, role `PEGAWAI`). It runs before the sample-data
+  guard, so the admin also exists when the bulk data is already present. There is no account
+  without a pegawai, including seeded accounts.
 - TTL is **sliding**: web 8h, mobile 30d. `AuthTokenRepository.refresh` extends the TTL only when the
   remaining lifetime is below 50%, to avoid a Valkey write per request. For cookie sessions the
   server must also re-send `Set-Cookie` with a fresh `Max-Age` whenever it extends the TTL.
 - **CSRF is required for cookie requests** and skipped for bearer requests and `POST /auth/token`
   (`BearerAwareCsrfMatcher`). The frontend gets the token from `GET /auth/csrf` (body, not cookie),
   keeps it in memory, and sends it as `X-XSRF-TOKEN`.
-- Never log tokens or cookies, and never accept `role`/audit fields from a request body.
+- Never log tokens or cookies. `role` is only accepted from an admin request body on `/pegawai`;
+  self-service (`/profile`) and audit fields never accept it.
 - `CurrentUser` exposes the authenticated principal for audit (`@CreatedBy`/`@LastModifiedBy` via
   `JpaAuditConfig`) and for `GET /auth/me`. The principal only carries `id`, `uuid`, `username`, and
   `role`; anything else is re-read from the database when needed.
@@ -473,9 +492,9 @@ partial index `(deleted_at) WHERE deleted_at IS NOT NULL`.
 15. **Auth is opaque-token based, cookie for web and bearer for mobile.** Tokens live in Valkey as
     `auth:sess:<sha256(token)>` → `userId`; never store the raw token or user data there, and never
     reintroduce `HttpSession`/`spring-session` (the app is `STATELESS` on purpose). A user account is
-    always 1-1 with a pegawai (`pegawai_id NOT NULL`), has no `nama`/`enabled` columns, and is
-    soft-deleted together with its pegawai while its tokens are revoked. Details in the
-    authentication section above.
+    always 1-1 with a pegawai (`pegawai_id NOT NULL`), its username is the NIP, it has no
+    `nama`/`enabled` columns, and is soft-deleted together with its pegawai while its tokens are
+    revoked. Details in the authentication section above.
 16. **Cookie requests require CSRF; bearer requests do not.** The frontend reads the CSRF token from
     the body of `GET /auth/csrf` (cross-subdomain JavaScript cannot read the API cookie) and sends it
     as `X-XSRF-TOKEN`. Do not disable CSRF globally to make Swagger or a client simpler.
