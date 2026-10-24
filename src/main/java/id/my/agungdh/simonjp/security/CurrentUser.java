@@ -24,7 +24,7 @@ public final class CurrentUser {
     }
 
     public static Optional<Long> id() {
-        return principal().map(AppUserPrincipal::id);
+        return principal().map(principal -> principal.id());
     }
 
     public static AppUserPrincipal require() {

@@ -50,9 +50,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, List<String>> fields = ex.getBindingResult().getFieldErrors().stream()
                 .collect(Collectors.groupingBy(
-                        org.springframework.validation.FieldError::getField,
+                        error -> error.getField(),
                         LinkedHashMap::new,
-                        Collectors.mapping(org.springframework.validation.FieldError::getDefaultMessage, Collectors.toList())));
+                        Collectors.mapping(error -> error.getDefaultMessage(), Collectors.toList())));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse("Validasi gagal", fields));
     }

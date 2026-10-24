@@ -18,8 +18,6 @@ import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.annotation.web.configurers.RequestCacheConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -59,19 +57,22 @@ public class SecurityConfig {
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                         .requireCsrfProtectionMatcher(csrfMatcher)
                         // CsrfConfigurer belum punya accessDeniedHandler, jadi di-set lewat post processor.
-                        .withObjectPostProcessor(new ObjectPostProcessor<CsrfFilter>() {
+                        // CsrfFilter final, jadi bound generiknya tidak boleh memakai CsrfFilter.
+                        .withObjectPostProcessor(new ObjectPostProcessor<Object>() {
                             @Override
-                            public <O extends CsrfFilter> O postProcess(O filter) {
-                                filter.setAccessDeniedHandler(csrfAccessDeniedHandler);
+                            public <O> O postProcess(O filter) {
+                                if (filter instanceof CsrfFilter csrfFilter) {
+                                    csrfFilter.setAccessDeniedHandler(csrfAccessDeniedHandler);
+                                }
                                 return filter;
                             }
                         }))
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .requestCache(RequestCacheConfigurer::disable)
-                .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .logout(AbstractHttpConfigurer::disable)
+                .requestCache(cache -> cache.disable())
+                .formLogin(login -> login.disable())
+                .httpBasic(basic -> basic.disable())
+                .logout(logout -> logout.disable())
                 .exceptionHandling(exceptionHandling -> exceptionHandling
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
