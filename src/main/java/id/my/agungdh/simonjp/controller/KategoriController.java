@@ -36,6 +36,15 @@ public class KategoriController {
 
     private final KategoriService service;
 
+    @GetMapping
+    @Operation(summary = "Daftar kategori (cursor pagination)")
+    @ApiResponse(responseCode = "200", description = "Daftar kategori")
+    @ApiInvalidCursor
+    @ApiInternalError
+    public CursorPageDTO<KategoriResponse> list(@RequestParam(required = false) UUID cursor) {
+        return service.list(cursor);
+    }
+
     @PostMapping
     @Operation(summary = "Buat kategori baru")
     @ApiResponse(responseCode = "201", description = "Kategori dibuat")
@@ -74,14 +83,5 @@ public class KategoriController {
     public ResponseEntity<Void> delete(@PathVariable UUID uuid) {
         service.delete(uuid);
         return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping
-    @Operation(summary = "Daftar kategori (cursor pagination)")
-    @ApiResponse(responseCode = "200", description = "Daftar kategori")
-    @ApiInvalidCursor
-    @ApiInternalError
-    public CursorPageDTO<KategoriResponse> list(@RequestParam(required = false) UUID cursor) {
-        return service.list(cursor);
     }
 }

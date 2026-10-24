@@ -36,6 +36,15 @@ public class ProductController {
 
     private final ProductService service;
 
+    @GetMapping
+    @Operation(summary = "Daftar produk (cursor pagination)")
+    @ApiResponse(responseCode = "200", description = "Daftar produk")
+    @ApiInvalidCursor
+    @ApiInternalError
+    public CursorPageDTO<ProductResponse> list(@RequestParam(required = false) UUID cursor) {
+        return service.list(cursor);
+    }
+
     @PostMapping
     @Operation(summary = "Buat produk baru")
     @ApiResponse(responseCode = "201", description = "Produk dibuat")
@@ -74,14 +83,5 @@ public class ProductController {
     public ResponseEntity<Void> delete(@PathVariable UUID uuid) {
         service.delete(uuid);
         return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping
-    @Operation(summary = "Daftar produk (cursor pagination)")
-    @ApiResponse(responseCode = "200", description = "Daftar produk")
-    @ApiInvalidCursor
-    @ApiInternalError
-    public CursorPageDTO<ProductResponse> list(@RequestParam(required = false) UUID cursor) {
-        return service.list(cursor);
     }
 }

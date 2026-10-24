@@ -236,6 +236,20 @@ and predictability.
   optional `fields`). Validation errors are grouped per field and may contain more than one entry
   per field.
 
+### Swagger / OpenAPI operation order
+
+Declare handler methods in a controller in the same order they must appear in Swagger UI:
+**list → create → get one → update → delete**, and put any specific feature endpoint **below
+`delete`**.
+
+- Swagger UI groups operations by path, so `GET /order-item` (list) and `POST /order-item` (create)
+  share the collection path and always render together; the item operations
+  (`GET`/`PUT`/`DELETE /order-item/{uuid}`) follow.
+- springdoc orders `paths` by `RequestMappingInfo`, not by declaration order, so
+  `config/OpenApiOperationOrderCustomizer` re-sorts the generated spec into the order above.
+  Endpoints it does not recognize (specific features) are placed below `delete`. When adding a
+  feature endpoint, declare it after `delete`; do not remove the customizer.
+
 ## Error handling
 
 - All errors go through `GlobalExceptionHandler` (`@RestControllerAdvice`); controllers do not build
@@ -393,3 +407,6 @@ partial index `(deleted_at) WHERE deleted_at IS NOT NULL`.
     section above.
 13. **CPU-heavy work (PDF/Excel generation, compression) does not run in this service.** Delegate it
     to another service over an HTTP client; virtual threads are only for blocking I/O CRUD.
+14. **Controller methods follow the Swagger order** — list → create → get one → update → delete, with
+    specific feature endpoints declared after `delete`. `config/OpenApiOperationOrderCustomizer`
+    enforces that order in the generated spec; details in the REST conventions section.

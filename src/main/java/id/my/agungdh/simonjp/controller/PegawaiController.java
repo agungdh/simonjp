@@ -36,6 +36,15 @@ public class PegawaiController {
 
     private final PegawaiService service;
 
+    @GetMapping
+    @Operation(summary = "Daftar pegawai (cursor pagination)")
+    @ApiResponse(responseCode = "200", description = "Daftar pegawai")
+    @ApiInvalidCursor
+    @ApiInternalError
+    public CursorPageDTO<PegawaiResponse> list(@RequestParam(required = false) UUID cursor) {
+        return service.list(cursor);
+    }
+
     @PostMapping
     @Operation(summary = "Buat pegawai baru")
     @ApiResponse(responseCode = "201", description = "Pegawai dibuat")
@@ -74,14 +83,5 @@ public class PegawaiController {
     public ResponseEntity<Void> delete(@PathVariable UUID uuid) {
         service.delete(uuid);
         return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping
-    @Operation(summary = "Daftar pegawai (cursor pagination)")
-    @ApiResponse(responseCode = "200", description = "Daftar pegawai")
-    @ApiInvalidCursor
-    @ApiInternalError
-    public CursorPageDTO<PegawaiResponse> list(@RequestParam(required = false) UUID cursor) {
-        return service.list(cursor);
     }
 }

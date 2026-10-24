@@ -36,6 +36,15 @@ public class BidangController {
 
     private final BidangService service;
 
+    @GetMapping
+    @Operation(summary = "Daftar bidang (cursor pagination)")
+    @ApiResponse(responseCode = "200", description = "Daftar bidang")
+    @ApiInvalidCursor
+    @ApiInternalError
+    public CursorPageDTO<BidangResponse> list(@RequestParam(required = false) UUID cursor) {
+        return service.list(cursor);
+    }
+
     @PostMapping
     @Operation(summary = "Buat bidang baru")
     @ApiResponse(responseCode = "201", description = "Bidang dibuat")
@@ -74,14 +83,5 @@ public class BidangController {
     public ResponseEntity<Void> delete(@PathVariable UUID uuid) {
         service.delete(uuid);
         return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping
-    @Operation(summary = "Daftar bidang (cursor pagination)")
-    @ApiResponse(responseCode = "200", description = "Daftar bidang")
-    @ApiInvalidCursor
-    @ApiInternalError
-    public CursorPageDTO<BidangResponse> list(@RequestParam(required = false) UUID cursor) {
-        return service.list(cursor);
     }
 }
