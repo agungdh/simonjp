@@ -9,7 +9,6 @@ import id.my.agungdh.repository.PegawaiRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import io.quarkus.runtime.StartupEvent;
 
 @ApplicationScoped
