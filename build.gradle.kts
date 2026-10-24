@@ -51,3 +51,12 @@ tasks.withType<JavaCompile> {
 tasks.withType<Test> {
 	useJUnitPlatform()
 }
+
+tasks.register<JavaExec>("seed") {
+	group = "application"
+	description = "Seed database with sample data"
+	dependsOn(tasks.named("classes"))
+	classpath = sourceSets["main"].runtimeClasspath
+	mainClass.set("id.my.agungdh.simonjp.SimonjpApplication")
+	args("--spring.profiles.active=seed", "--spring.main.web-application-type=none")
+}
