@@ -21,6 +21,8 @@ import java.util.UUID;
 @Transactional
 public class ProductService {
 
+    private static final int PAGE_SIZE = 20;
+
     private final ProductRepository repository;
     private final ProductMapper mapper;
 
@@ -59,7 +61,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public CursorPageDTO<ProductResponse> list(UUID cursor) {
-        int size = 20;
+        int size = PAGE_SIZE;
         Long cursorId = null;
         if (cursor != null) {
             Product cursorEntity = repository.findByUuid(cursor)
