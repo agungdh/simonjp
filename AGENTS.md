@@ -39,6 +39,8 @@ docker compose up -d postgres valkey  # required before tests / dev
 - Redis connection comes from `spring.data.redis.*` (`REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`).
 - Auth is configured under `app.auth.*`: cookie name/secure/same-site, sliding TTLs, and BCrypt
   cost. CORS origin comes from `app.cors.allowed-origins`.
+- List page size comes from `app.pagination.page-size` (`APP_PAGE_SIZE`, default 20) and is bound
+  through `config/PageProperties`. Never hardcode it in a controller or a service.
 - Do not commit secrets; use environment variables / Spring profiles for environment-specific values.
 
 ## Structure & architecture
@@ -424,7 +426,9 @@ need, as a separate endpoint — never tucked into the list response.
 - The only cursor exposed to clients is the `uuid` of the last row. Never send `id`, an offset, or a
   page number in the cursor.
 - Query params: `cursor` (UUID, optional), `sort`, and `order`
-  (`asc`/`desc`). `limit` is fixed at 20 and is not client-configurable.
+  (`asc`/`desc`). The page size is read from `app.pagination.page-size` (default 20) through
+  `config/PageProperties` and is not client-configurable; never hardcode it in a controller or a
+  service.
 - When `sort` is not sent, default to `ORDER BY id DESC`; `order` defaults to `desc`. `id` stays
   internal and is not exposed to clients.
 - When `cursor` is present, the service:
@@ -542,8 +546,9 @@ partial index `(deleted_at) WHERE deleted_at IS NOT NULL`.
     imported legacy data.
 12. **Every list endpoint uses cursor pagination**, including small master tables, so the API
     contract stays uniform. The cursor is the `uuid` of the last row; offsets/pages are not used.
-    Small tables may skip keyset indexes and may not support `sort`. Details in the pagination
-    section above.
+    Small tables may skip keyset indexes and may not support `sort`. The page size is a single
+    configuration value (`app.pagination.page-size` via `config/PageProperties`), not a constant
+    inside a controller or service. Details in the pagination section above.
 13. **CPU-heavy work (PDF/Excel generation, compression) does not run in this service.** Delegate it
     to another service over an HTTP client; virtual threads are only for blocking I/O CRUD.
 14. **Controller methods follow the Swagger order** — list → create → get one → update → delete, with

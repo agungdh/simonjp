@@ -1,5 +1,6 @@
 package id.my.agungdh.simonjp.service;
 
+import id.my.agungdh.simonjp.config.PageProperties;
 import id.my.agungdh.simonjp.domain.Bidang;
 import id.my.agungdh.simonjp.domain.KategoriJabatan;
 import id.my.agungdh.simonjp.domain.KategoriKebutuhanJamPelatihan;
@@ -37,14 +38,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PegawaiService {
 
-    private static final int PAGE_SIZE = 20;
-
     private final PegawaiRepository repository;
     private final PegawaiMapper mapper;
     private final BidangRepository bidangRepository;
     private final PangkatGolonganRepository pangkatGolonganRepository;
     private final UserAccountRepository userAccountRepository;
     private final UserAccountService userAccountService;
+    private final PageProperties pageProperties;
 
     public PegawaiResponse create(PegawaiRequest request) {
         validateNipAvailable(request.nip(), null);
@@ -114,7 +114,7 @@ public class PegawaiService {
                 kategoriJabatan,
                 kategoriKebutuhanJamPelatihan);
 
-        int size = PAGE_SIZE;
+        int size = pageProperties.pageSize();
         Long cursorId = null;
         if (cursor != null) {
             Pegawai cursorEntity = repository.findWithRelationsByUuid(cursor)

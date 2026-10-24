@@ -23,7 +23,9 @@ spring:
     enabled: true
 
 app:
-  page-size: 20
+  pagination:
+    # Ukuran halaman untuk semua endpoint list; client tidak bisa mengubahnya.
+    page-size: ${APP_PAGE_SIZE:20}
   cors:
     # Origin FE, dipisah koma. Jangan pernah "*" karena cookie memakai credentials.
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}

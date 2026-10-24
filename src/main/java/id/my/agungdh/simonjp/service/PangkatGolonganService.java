@@ -1,5 +1,6 @@
 package id.my.agungdh.simonjp.service;
 
+import id.my.agungdh.simonjp.config.PageProperties;
 import id.my.agungdh.simonjp.domain.PangkatGolongan;
 import id.my.agungdh.simonjp.dto.CursorPageDTO;
 import id.my.agungdh.simonjp.dto.PangkatGolonganRequest;
@@ -24,10 +25,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PangkatGolonganService {
 
-    private static final int PAGE_SIZE = 20;
-
     private final PangkatGolonganRepository repository;
     private final PangkatGolonganMapper mapper;
+    private final PageProperties pageProperties;
 
     public PangkatGolonganResponse create(PangkatGolonganRequest request) {
         repository.findDuplicate(request.pangkat(), request.golongan(), request.ruang())
@@ -75,7 +75,7 @@ public class PangkatGolonganService {
     @Transactional(readOnly = true)
     public CursorPageDTO<PangkatGolonganResponse> list(UUID cursor, String search) {
         SearchTerm term = SearchTerm.of(search);
-        int size = PAGE_SIZE;
+        int size = pageProperties.pageSize();
         PageRequest pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.DESC, "id"));
         Long cursorId = null;
         if (cursor != null) {

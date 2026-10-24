@@ -1,5 +1,6 @@
 package id.my.agungdh.simonjp.service;
 
+import id.my.agungdh.simonjp.config.PageProperties;
 import id.my.agungdh.simonjp.domain.Bidang;
 import id.my.agungdh.simonjp.dto.BidangRequest;
 import id.my.agungdh.simonjp.dto.BidangResponse;
@@ -24,10 +25,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class BidangService {
 
-    private static final int PAGE_SIZE = 20;
-
     private final BidangRepository repository;
     private final BidangMapper mapper;
+    private final PageProperties pageProperties;
 
     public BidangResponse create(BidangRequest request) {
         if (repository.findByNamaIgnoreCase(request.nama()).isPresent()) {
@@ -69,7 +69,7 @@ public class BidangService {
     @Transactional(readOnly = true)
     public CursorPageDTO<BidangResponse> list(UUID cursor, String search) {
         SearchTerm term = SearchTerm.of(search);
-        int size = PAGE_SIZE;
+        int size = pageProperties.pageSize();
         PageRequest pageable = PageRequest.of(0, size + 1, Sort.by(Sort.Direction.DESC, "id"));
         Long cursorId = null;
         if (cursor != null) {
