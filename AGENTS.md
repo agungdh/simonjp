@@ -230,9 +230,10 @@ and predictability.
   omitted optional field is treated as `null` and clears the old value. Do not use `PATCH`/partial
   updates unless there is an explicit, documented need.
 - Identity path parameters are always `uuid`, never `id`.
-- **Error responses carry only `message`.** The HTTP status code is already conveyed by the
-  response status line, so do not duplicate it in the body (e.g. `ErrorResponse` has a single
-  `message` field).
+- **Error responses carry only `message` (plus an optional `errors` list for validation, where each
+  entry has `field` and `message`).** The HTTP status code is already conveyed by the response
+  status line, so do not duplicate it in the body (e.g. `ErrorResponse` has `message` and optional
+  `errors`). Validation errors are returned per field and may contain more than one entry.
 
 ## Pagination (cursor)
 

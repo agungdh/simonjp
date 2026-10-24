@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.stream.Collectors;
+import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -33,14 +33,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
-        String message = ex.getBindingResult().getFieldErrors().stream()
-                .map(e -> e.getField() + ": " + e.getDefaultMessage())
-                .collect(Collectors.joining("; "));
-        if (message.isBlank()) {
-            message = "Validasi gagal";
-        }
+        List<ErrorResponse.FieldError> errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(e -> new ErrorResponse.FieldError(e.getField(), e.getDefaultMessage()))
+                .toList();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse(message));
+                .body(new ErrorResponse("Validasi gagal", errors));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
