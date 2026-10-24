@@ -10,11 +10,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Documented
-@Constraint(validatedBy = ExistingBidangValidator.class)
+@Constraint(validatedBy = ExistsValidator.class)
 @Target({ElementType.FIELD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface ExistingBidang {
-    String message() default "Bidang tidak ditemukan";
+public @interface Exists {
+    Class<?> value();
+
+    String message() default "Data tidak ditemukan";
 
     Class<?>[] groups() default {};
 
