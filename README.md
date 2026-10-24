@@ -96,3 +96,15 @@ src/main/java/id/my/agungdh/
 
 The directories map one-to-one to the layers above. Layer dependencies and database conventions are
 documented in [`AGENTS.md`](AGENTS.md).
+
+## Authentication (JWT)
+
+Auth uses Quarkus Security + SmallRye JWT with the token carried in the `SESSION` cookie.
+The RSA key pair is **not** committed. Generate it locally before running:
+
+```shell
+openssl genpkey -algorithm RSA -out src/main/resources/privateKey.pem -pkeyopt rsa_keygen_bits:2048
+openssl rsa -pubout -in src/main/resources/privateKey.pem -out src/main/resources/publicKey.pem
+```
+
+Default seeded admin user: `admin` / `admin` (created on first boot if no user exists).
