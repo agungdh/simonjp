@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help up down start seed wait reset
+.PHONY: help up down run seed wait reset
 
 help: ## Show available targets
 	@echo "Usage: make <target>"
@@ -13,7 +13,7 @@ up: ## Start services
 down: ## Stop and remove containers and volumes
 	docker compose down -v
 
-start: ## Build jar and run it
+run: ## Build jar and run it
 	./gradlew bootJar
 	java -jar build/libs/simonjp-0.0.1-SNAPSHOT.jar
 
