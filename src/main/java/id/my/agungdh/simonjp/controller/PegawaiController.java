@@ -45,14 +45,14 @@ public class PegawaiController {
 
     @GetMapping
     @Operation(summary = "Daftar pegawai (cursor pagination)",
-            description = "search = substring case-insensitive (3-100 karakter) pada "
-                    + "nama/nip/email/jabatan. Filter lain digabung dengan AND.")
+            description = "search = substring case-insensitive (3-100 karakter) pada kolom pegawai "
+                    + "serta bidang dan pangkat/golongan yang di-join. Filter lain digabung dengan AND.")
     @ApiResponse(responseCode = "200", description = "Daftar pegawai")
     @ApiInvalidCursor
     @ApiUnauthorized
     @ApiInternalError
     public CursorPageDTO<PegawaiResponse> list(
-            @Parameter(description = "Pencarian %kata% pada nama/nip/email/jabatan")
+            @Parameter(description = "Pencarian %kata% pada pegawai, bidang, dan pangkat/golongan")
             @RequestParam(required = false) String search,
             @Parameter(description = "Filter status kepegawaian")
             @RequestParam(required = false) PegawaiStatus status,

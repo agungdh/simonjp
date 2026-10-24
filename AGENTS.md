@@ -253,8 +253,9 @@ Substring search (`%kata%`) is backed by `pg_trgm`; a plain btree cannot serve a
   with the repository queries.
 - Do not add `coalesce` around a nullable text column: `NULL LIKE ...` evaluates to `NULL` and does
   not match, which is the desired behavior.
-- Only large tables need trigram indexes. Small master tables (`bidang`, `pangkat_golongan`) can keep
-  a seq scan.
+- Only tables whose text columns are searched need trigram indexes. Because a pegawai search also
+  covers the joined `bidang` and `pangkat_golongan` columns, those master tables need trigram
+  indexes too. A master table that is only listed on its own (no joined search) can keep a seq scan.
 - Composite indexes such as `(filter_col, id DESC) WHERE deleted_at IS NULL` are added only after
   `EXPLAIN` proves they are needed, not preemptively.
 
@@ -346,8 +347,20 @@ semantics (`%kata%`), not prefix or full-text search:
   cannot narrow the scan.
 - Input is literal: `%`, `_`, and the escape character are escaped, so typing `%` does not match
   everything.
-- Search matches the endpoint's text columns: `pegawai` (`nama`, `nip`, `email`, `jabatan`), `bidang`
-  (`nama`, `deskripsi`), and `pangkat-golongan` (`jenjang`, `pangkat`, `golongan`, `ruang`).
+- Search matches the endpoint's text columns. For `pegawai`, one keyword searches its own columns
+  (`nama`, `nip`, `email`, `jabatan`, `peran`) **and** the joined master data (`bidang.nama`,
+  `bidang.deskripsi`, `pangkat_golongan.jenjang/pangkat/golongan/ruang`). `bidang` searches
+  (`nama`, `deskripsi`) and `pangkat-golongan` searches (`jenjang`, `pangkat`, `golongan`, `ruang`)
+  stay on their own tables. The FE only has one search field, so do not turn this into per-column
+  parameters.
+- A cross-table `OR` cannot use each table's index at once, so `PegawaiRepositoryImpl` splits the
+  search into three ID queries: pegawai's own columns, `bidang` (master IDs first, then
+  `bidang_id IN (...)`), and `pangkat_golongan` (same pattern). The ID sets are unioned, sorted by
+  `id DESC`, then entities are fetched by ID. The pegawai branch has no join, so a pegawai with
+  `NULL` bidang/pangkat still matches through its own columns; a master branch is skipped entirely
+  when no master row matches. Do not collapse this back into one query with a joined `OR`.
+- The `bidangUuid`/`pangkatGolonganUuid` params remain exact filters and can be combined with the
+  same `search`.
 - Structured filters are exact and combined with **AND**; `search` itself is an **OR** across its
   columns. `GET /pegawai` currently supports `status`, `bidangUuid`, `pangkatGolonganUuid`,
   `kategoriJabatan`, and `kategoriKebutuhanJamPelatihan`.
@@ -544,6 +557,8 @@ partial index `(deleted_at) WHERE deleted_at IS NOT NULL`.
     the body of `GET /auth/csrf` (cross-subdomain JavaScript cannot read the API cookie) and sends it
     as `X-XSRF-TOKEN`. Do not disable CSRF globally to make Swagger or a client simpler.
 17. **Search is a case-insensitive substring filter backed by pg_trgm.** `search` is trimmed, limited
-    to 3–100 characters, and escaped (literal `%`/`_`). Use `lower(column) LIKE :pattern ESCAPE '!'`
-    against partial GIN trigram indexes; do not use `ILIKE`, `:param IS NULL OR ...`, or full-text
-    search for this contract. Details in the REST conventions and search index sections above.
+    to 3–100 characters, and escaped (literal `%`/`_`). One `search` keyword covers the entity's own
+    text columns plus the joined master columns (pegawai → bidang/pangkat-golongan) via `LEFT JOIN`;
+    structured `*Uuid` filters stay exact. Use `lower(column) LIKE :pattern ESCAPE '!'` against
+    partial GIN trigram indexes; do not use `ILIKE`, `:param IS NULL OR ...`, or full-text search for
+    this contract. Details in the REST conventions and search index sections above.

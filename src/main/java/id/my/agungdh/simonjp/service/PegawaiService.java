@@ -134,9 +134,24 @@ public class PegawaiService {
     }
 
     private boolean matchesFilter(SearchTerm term, PegawaiFilter filter, Pegawai pegawai) {
-        if (term != null && !term.matchesAny(pegawai.getNama(), pegawai.getNip(),
-                pegawai.getEmail(), pegawai.getJabatan())) {
-            return false;
+        if (term != null) {
+            Bidang bidang = pegawai.getBidang();
+            PangkatGolongan pangkat = pegawai.getPangkatGolongan();
+            boolean matched = term.matchesAny(
+                    pegawai.getNama(),
+                    pegawai.getNip(),
+                    pegawai.getEmail(),
+                    pegawai.getJabatan(),
+                    pegawai.getPeran(),
+                    bidang == null ? null : bidang.getNama(),
+                    bidang == null ? null : bidang.getDeskripsi(),
+                    pangkat == null ? null : pangkat.getJenjang(),
+                    pangkat == null ? null : pangkat.getPangkat(),
+                    pangkat == null ? null : pangkat.getGolongan(),
+                    pangkat == null ? null : pangkat.getRuang());
+            if (!matched) {
+                return false;
+            }
         }
         if (filter.status() != null && filter.status() != pegawai.getStatus()) {
             return false;

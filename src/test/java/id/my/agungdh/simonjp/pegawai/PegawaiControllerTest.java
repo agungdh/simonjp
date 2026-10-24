@@ -359,6 +359,77 @@ class PegawaiControllerTest {
     }
 
     @Test
+    void searchMatchesJoinedBidangAndKeepsBidangFilter() throws Exception {
+        String token = "BidangSearch" + UUID.randomUUID().toString().substring(0, 8);
+        Bidang bidang = new Bidang();
+        bidang.setNama(token + " Test");
+        bidang.setDeskripsi("Deskripsi " + token);
+        bidangRepository.save(bidang);
+
+        Pegawai pegawai = new Pegawai();
+        pegawai.setNama("Pegawai Tanpa Token");
+        pegawai.setNip(uniqueNip());
+        pegawai.setStatus(PegawaiStatus.AKTIF);
+        pegawai.setBidang(bidang);
+        pegawaiRepository.save(pegawai);
+
+        mvc.perform(get("/pegawai")
+                        .param("search", token)
+                        .param("bidangUuid", bidang.getUuid().toString())
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].uuid", hasItem(pegawai.getUuid().toString())));
+
+        mvc.perform(get("/pegawai")
+                        .param("search", token)
+                        .param("bidangUuid", bidangUuid.toString())
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
+    void searchMatchesJoinedPangkatGolongan() throws Exception {
+        String token = "PangkatSearch" + UUID.randomUUID().toString().substring(0, 8);
+        PangkatGolongan pangkat = new PangkatGolongan();
+        pangkat.setJenjang("Jenjang " + token);
+        pangkat.setPangkat("Pangkat " + UUID.randomUUID());
+        pangkat.setGolongan("IV");
+        pangkat.setRuang("b");
+        pangkatGolonganRepository.save(pangkat);
+
+        Pegawai pegawai = new Pegawai();
+        pegawai.setNama("Pegawai Tanpa Token");
+        pegawai.setNip(uniqueNip());
+        pegawai.setStatus(PegawaiStatus.AKTIF);
+        pegawai.setPangkatGolongan(pangkat);
+        pegawaiRepository.save(pegawai);
+
+        mvc.perform(get("/pegawai")
+                        .param("search", token)
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].uuid", hasItem(pegawai.getUuid().toString())));
+    }
+
+    @Test
+    void searchMatchesPegawaiWithoutBidangOrPangkat() throws Exception {
+        String token = "Yatim" + UUID.randomUUID().toString().substring(0, 8);
+        Pegawai pegawai = new Pegawai();
+        pegawai.setNama("Pegawai Tanpa Relasi");
+        pegawai.setNip(uniqueNip());
+        pegawai.setPeran(token);
+        pegawai.setStatus(PegawaiStatus.AKTIF);
+        pegawaiRepository.save(pegawai);
+
+        mvc.perform(get("/pegawai")
+                        .param("search", token)
+                        .header("Authorization", "Bearer " + adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].uuid", hasItem(pegawai.getUuid().toString())));
+    }
+
+    @Test
     void cursorMustMatchActiveFilter() throws Exception {
         String uuidA = create("Cursor A " + UUID.randomUUID(), uniqueNip(), PASSWORD);
         create("Cursor B " + UUID.randomUUID(), uniqueNip(), PASSWORD);

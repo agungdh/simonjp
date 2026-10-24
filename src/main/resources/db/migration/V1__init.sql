@@ -20,6 +20,13 @@ CREATE INDEX idx_bidang_uuid ON bidang USING hash (uuid);
 
 CREATE UNIQUE INDEX ux_bidang_nama_active ON bidang (lower(nama)) WHERE deleted_at IS NULL;
 
+-- Bidang ikut dicari saat search pegawai (satu kolom search untuk FE).
+CREATE INDEX idx_bidang_nama_trgm
+    ON bidang USING gin (lower(nama) gin_trgm_ops) WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_bidang_deskripsi_trgm
+    ON bidang USING gin (lower(deskripsi) gin_trgm_ops) WHERE deleted_at IS NULL;
+
 CREATE TABLE pangkat_golongan (
     id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     uuid        UUID NOT NULL,
@@ -42,6 +49,19 @@ CREATE INDEX idx_pangkat_golongan_uuid ON pangkat_golongan USING hash (uuid);
 CREATE UNIQUE INDEX ux_pangkat_golongan_nama_active
     ON pangkat_golongan (lower(pangkat), lower(golongan), lower(coalesce(ruang, '')))
     WHERE deleted_at IS NULL;
+
+-- Pangkat/golongan ikut dicari saat search pegawai (satu kolom search untuk FE).
+CREATE INDEX idx_pangkat_golongan_jenjang_trgm
+    ON pangkat_golongan USING gin (lower(jenjang) gin_trgm_ops) WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_pangkat_golongan_pangkat_trgm
+    ON pangkat_golongan USING gin (lower(pangkat) gin_trgm_ops) WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_pangkat_golongan_golongan_trgm
+    ON pangkat_golongan USING gin (lower(golongan) gin_trgm_ops) WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_pangkat_golongan_ruang_trgm
+    ON pangkat_golongan USING gin (lower(ruang) gin_trgm_ops) WHERE deleted_at IS NULL;
 
 CREATE TABLE pegawai (
     id                               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -95,6 +115,9 @@ CREATE INDEX idx_pegawai_email_trgm
 
 CREATE INDEX idx_pegawai_jabatan_trgm
     ON pegawai USING gin (lower(jabatan) gin_trgm_ops) WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_pegawai_peran_trgm
+    ON pegawai USING gin (lower(peran) gin_trgm_ops) WHERE deleted_at IS NULL;
 
 CREATE TABLE user_account (
     id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
