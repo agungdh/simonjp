@@ -44,6 +44,10 @@ QUADLET_DIR ?= $(HOME)/.config/containers/systemd
 BACKUP_DIR ?= ./backups
 TIMESTAMP := $(shell date +%Y%m%d-%H%M%S)
 
+# Auto-detect running simonjp postgres/valkey containers (dev compose or quadlet).
+PG_CONTAINER ?= $(shell $(CONTAINER_RUNTIME) ps --format '{{.Names}}' 2>/dev/null | grep -iE 'simonjp.*postgres|postgres.*simonjp' | head -1)
+REDIS_CONTAINER ?= $(shell $(CONTAINER_RUNTIME) ps --format '{{.Names}}' 2>/dev/null | grep -iE 'simonjp.*(valkey|redis)|(valkey|redis).*simonjp' | grep -iv 'commander' | head -1)
+
 podman-build: ## Build native binary and container image
 	./gradlew nativeCompile
 	podman build -t simonjp:latest .
@@ -73,27 +77,31 @@ enable-linger: ## Enable lingering so user services run without login
 # ---- Backup / Restore ----
 
 backup-postgres: ## Backup PostgreSQL to backups/postgres-<timestamp>.sql
+	@test -n "$(PG_CONTAINER)" || (echo "No running simonjp postgres container found. Start it first."; exit 1)
 	@mkdir -p $(BACKUP_DIR)
-	podman exec simonjp-postgres pg_dump -U admin -d simonjp --clean --if-exists --no-owner --no-acl > $(BACKUP_DIR)/postgres-$(TIMESTAMP).sql
-	@echo "Backup written to $(BACKUP_DIR)/postgres-$(TIMESTAMP).sql"
+	$(CONTAINER_RUNTIME) exec $(PG_CONTAINER) pg_dump -U admin -d simonjp --clean --if-exists --no-owner --no-acl > $(BACKUP_DIR)/postgres-$(TIMESTAMP).sql
+	@echo "Backup written to $(BACKUP_DIR)/postgres-$(TIMESTAMP).sql (container: $(PG_CONTAINER))"
 
 backup-redis: ## Backup Valkey to backups/redis-<timestamp>.rdb
+	@test -n "$(REDIS_CONTAINER)" || (echo "No running simonjp valkey/redis container found. Start it first."; exit 1)
 	@mkdir -p $(BACKUP_DIR)
-	podman exec simonjp-valkey valkey-cli -a admin BGSAVE
+	$(CONTAINER_RUNTIME) exec $(REDIS_CONTAINER) valkey-cli -a admin BGSAVE
 	@sleep 1
-	podman cp simonjp-valkey:/data/dump.rdb $(BACKUP_DIR)/redis-$(TIMESTAMP).rdb
-	@echo "Backup written to $(BACKUP_DIR)/redis-$(TIMESTAMP).rdb"
+	$(CONTAINER_RUNTIME) cp $(REDIS_CONTAINER):/data/dump.rdb $(BACKUP_DIR)/redis-$(TIMESTAMP).rdb
+	@echo "Backup written to $(BACKUP_DIR)/redis-$(TIMESTAMP).rdb (container: $(REDIS_CONTAINER))"
 
 backup: backup-postgres backup-redis ## Backup both PostgreSQL and Valkey
 
 restore-postgres: ## Restore PostgreSQL from FILE=...
 	@test -n "$(FILE)" || (echo "Usage: make restore-postgres FILE=backups/postgres-xxx.sql"; exit 1)
-	podman exec -i simonjp-postgres psql -U admin -d simonjp < $(FILE)
-	@echo "Restored from $(FILE)"
+	@test -n "$(PG_CONTAINER)" || (echo "No running simonjp postgres container found. Start it first."; exit 1)
+	$(CONTAINER_RUNTIME) exec -i $(PG_CONTAINER) psql -U admin -d simonjp < $(FILE)
+	@echo "Restored from $(FILE) (container: $(PG_CONTAINER))"
 
 restore-redis: ## Restore Valkey from FILE=...
 	@test -n "$(FILE)" || (echo "Usage: make restore-redis FILE=backups/redis-xxx.rdb"; exit 1)
-	podman stop simonjp-valkey
-	podman run --rm -v simonjp-valkey-data:/data -v $(abspath $(FILE)):/backup.rdb:ro,Z busybox sh -c 'cp /backup.rdb /data/dump.rdb'
-	podman start simonjp-valkey
-	@echo "Restored from $(FILE)"
+	@test -n "$(REDIS_CONTAINER)" || (echo "No running simonjp valkey/redis container found. Start it first."; exit 1)
+	$(CONTAINER_RUNTIME) stop $(REDIS_CONTAINER)
+	$(CONTAINER_RUNTIME) cp $(FILE) $(REDIS_CONTAINER):/data/dump.rdb
+	$(CONTAINER_RUNTIME) start $(REDIS_CONTAINER)
+	@echo "Restored from $(FILE) (container: $(REDIS_CONTAINER))"
