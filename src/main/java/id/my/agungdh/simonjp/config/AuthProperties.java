@@ -14,7 +14,6 @@ import java.time.Duration;
  * @param webTokenTtl     sliding TTL untuk session web
  * @param mobileTokenTtl  sliding TTL untuk bearer mobile
  * @param bcryptStrength  cost BCrypt (4 khusus test, 12 untuk production)
- * @param bootstrap       pembuatan admin awal (beserta pegawainya) dari environment
  */
 @ConfigurationProperties(prefix = "app.auth")
 public record AuthProperties(
@@ -24,8 +23,7 @@ public record AuthProperties(
         String csrfCookieName,
         Duration webTokenTtl,
         Duration mobileTokenTtl,
-        int bcryptStrength,
-        Bootstrap bootstrap
+        int bcryptStrength
 ) {
 
     public AuthProperties {
@@ -38,8 +36,5 @@ public record AuthProperties(
         if (webTokenTtl == null || mobileTokenTtl == null) {
             throw new IllegalStateException("app.auth.web-token-ttl dan mobile-token-ttl wajib diisi");
         }
-    }
-
-    public record Bootstrap(boolean enabled, String username, String password, String pegawaiNama) {
     }
 }

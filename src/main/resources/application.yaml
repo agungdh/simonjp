@@ -36,9 +36,3 @@ app:
     web-token-ttl: ${AUTH_WEB_TOKEN_TTL:8h}
     mobile-token-ttl: ${AUTH_MOBILE_TOKEN_TTL:30d}
     bcrypt-strength: ${AUTH_BCRYPT_STRENGTH:12}
-    bootstrap:
-      enabled: ${AUTH_BOOTSTRAP_ENABLED:false}
-      username: ${APP_ADMIN_USERNAME:}
-      password: ${APP_ADMIN_PASSWORD:}
-      # Nama pegawai yang dibuat untuk admin bootstrap (setiap akun wajib punya pegawai).
-      pegawai-nama: ${APP_ADMIN_NAMA:Administrator}

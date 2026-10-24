@@ -27,8 +27,8 @@ public class UserAccountService {
     private final PasswordEncoder passwordEncoder;
 
     /**
-     * Membuat admin awal beserta pegawainya. Setiap akun wajib terhubung ke pegawai,
-     * jadi bootstrap membuat pegawai lebih dulu. Idempoten terhadap username.
+     * Membuat akun admin beserta pegawainya. Dipakai seeder profil {@code seed}; setiap akun
+     * wajib terhubung ke pegawai, jadi pegawai dibuat lebih dulu. Idempoten terhadap username.
      */
     @Transactional
     public void ensureAdmin(String username, String rawPassword, String pegawaiNama, Role role) {

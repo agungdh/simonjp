@@ -37,8 +37,8 @@ docker compose up -d postgres valkey  # required before tests / dev
   `spring.jpa.hibernate.ddl-auto=validate`, and enable Flyway (`spring.flyway.enabled=true`);
   schema changes go through Flyway migrations, never auto-DDL.
 - Redis connection comes from `spring.data.redis.*` (`REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`).
-- Auth is configured under `app.auth.*`: cookie name/secure/same-site, sliding TTLs, BCrypt cost,
-  and optional admin bootstrap. CORS origin comes from `app.cors.allowed-origins`.
+- Auth is configured under `app.auth.*`: cookie name/secure/same-site, sliding TTLs, and BCrypt
+  cost. CORS origin comes from `app.cors.allowed-origins`.
 - Do not commit secrets; use environment variables / Spring profiles for environment-specific values.
 
 ## Structure & architecture
@@ -126,9 +126,11 @@ persisted and the store never contains user data.
   disabled, `AuthService.me()` re-reads the user with the `pegawai` and `pegawai.bidang` entity graph
   instead of reading lazy relations from the principal. The `/pegawai` endpoints keep the leaner
   `PegawaiResponse` with `bidangUuid`.
-- The bootstrap admin is also a pegawai: `AuthBootstrap` creates a pegawai row (name from
-  `APP_ADMIN_NAMA`, `nip`/`email` left `NULL`) and then the account, in one transaction. There is no
-  account without a pegawai, including system/bootstrap accounts.
+- The seeded admin is also a pegawai: `SeedService` (profile `seed`, `./gradlew seed`) creates the
+  `admin` account (password `admin`) with a pegawai named `Administrator` (`nip`/`email`/`bidang`
+  left `NULL`), in one transaction. It runs before the sample-data guard, so the admin also exists
+  when the bulk data is already present. There is no account without a pegawai, including seeded
+  accounts.
 - TTL is **sliding**: web 8h, mobile 30d. `AuthTokenRepository.refresh` extends the TTL only when the
   remaining lifetime is below 50%, to avoid a Valkey write per request. For cookie sessions the
   server must also re-send `Set-Cookie` with a fresh `Max-Age` whenever it extends the TTL.
