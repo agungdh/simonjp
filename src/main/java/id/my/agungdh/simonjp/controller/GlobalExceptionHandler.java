@@ -36,13 +36,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
-        Map<String, List<String>> errors = ex.getBindingResult().getFieldErrors().stream()
+        Map<String, List<String>> fields = ex.getBindingResult().getFieldErrors().stream()
                 .collect(Collectors.groupingBy(
                         org.springframework.validation.FieldError::getField,
                         LinkedHashMap::new,
                         Collectors.mapping(org.springframework.validation.FieldError::getDefaultMessage, Collectors.toList())));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse("Validasi gagal", errors));
+                .body(new ErrorResponse("Validasi gagal", fields));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

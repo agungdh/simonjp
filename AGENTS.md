@@ -230,20 +230,20 @@ and predictability.
   omitted optional field is treated as `null` and clears the old value. Do not use `PATCH`/partial
   updates unless there is an explicit, documented need.
 - Identity path parameters are always `uuid`, never `id`.
-- **Error responses carry only `message` (plus an optional `errors` map for validation, where each
+- **Error responses carry only `message` (plus an optional `fields` map for validation, where each
   key is a field and value is a list of messages).** The HTTP status code is already conveyed by the
   response status line, so do not duplicate it in the body (e.g. `ErrorResponse` has `message` and
-  optional `errors`). Validation errors are grouped per field and may contain more than one entry
+  optional `fields`). Validation errors are grouped per field and may contain more than one entry
   per field.
 
 ## Error handling
 
 - All errors go through `GlobalExceptionHandler` (`@RestControllerAdvice`); controllers do not build
   error bodies manually.
-- `ErrorResponse` carries only `message` plus an optional `errors` map. The HTTP status code is
+- `ErrorResponse` carries only `message` plus an optional `fields` map. The HTTP status code is
   conveyed by the response status line and is not duplicated in the body.
-- For `@Valid` validation failures, `errors` is a map of field name -> list of messages, grouped
-  per field, so a single field can report more than one violation. For any other error, `errors`
+- For `@Valid` validation failures, `fields` is a map of field name -> list of messages, grouped
+  per field, so a single field can report more than one violation. For any other error, `fields`
   is `null` and only `message` is present.
 - Controllers annotate request bodies with `@Valid`; services throw `ResponseStatusException` (or
   domain-specific exceptions handled by the advice) for not-found / bad-request cases.
