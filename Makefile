@@ -1,19 +1,29 @@
 .DEFAULT_GOAL := help
 
+# Prefer Docker when available, fall back to Podman.
+ifeq ($(shell command -v docker 2>/dev/null),)
+  CONTAINER_RUNTIME := podman
+  COMPOSE := podman compose
+else
+  CONTAINER_RUNTIME := docker
+  COMPOSE := docker compose
+endif
+
 .PHONY: help up down run seed wait reset podman-build quadlet-install quadlet-uninstall quadlet-start quadlet-stop quadlet-status enable-linger backup backup-postgres backup-redis restore-postgres restore-redis
 
 help: ## Show available targets
 	@echo "Usage: make <target>"
+	@echo "Container runtime: $(CONTAINER_RUNTIME)"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
 
 # ---- Docker Compose (dev) ----
 
-up: ## Start services (docker compose)
-	docker compose up -d
+up: ## Start services (docker/podman compose)
+	$(COMPOSE) up -d
 
-down: ## Stop and remove containers and volumes (docker compose)
-	docker compose down -v
+down: ## Stop and remove containers and volumes (docker/podman compose)
+	$(COMPOSE) down -v
 
 run: ## Build jar and run it
 	./gradlew bootJar
@@ -23,8 +33,8 @@ seed: ## Run gradle seed task
 	./gradlew seed
 
 wait: ## Wait for postgres and valkey readiness
-	@until docker compose exec -T postgres pg_isready -U admin -d simonjp >/dev/null 2>&1; do sleep 1; done
-	@until docker compose exec -T valkey valkey-cli -a admin ping 2>/dev/null | grep -q PONG; do sleep 1; done
+	@until $(COMPOSE) exec -T postgres pg_isready -U admin -d simonjp >/dev/null 2>&1; do sleep 1; done
+	@until $(COMPOSE) exec -T valkey valkey-cli -a admin ping 2>/dev/null | grep -q PONG; do sleep 1; done
 
 reset: down up wait seed ## Reset DB: down, up, wait, seed
 
