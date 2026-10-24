@@ -1,11 +1,9 @@
 package id.my.agungdh.simonjp.validation;
 
 import id.my.agungdh.simonjp.domain.Bidang;
-import id.my.agungdh.simonjp.domain.Kategori;
 import id.my.agungdh.simonjp.domain.PangkatGolongan;
 import id.my.agungdh.simonjp.domain.Pegawai;
 import id.my.agungdh.simonjp.repository.BidangRepository;
-import id.my.agungdh.simonjp.repository.KategoriRepository;
 import id.my.agungdh.simonjp.repository.PangkatGolonganRepository;
 import id.my.agungdh.simonjp.repository.PegawaiRepository;
 import jakarta.validation.ConstraintValidator;
@@ -22,9 +20,6 @@ public class ExistsValidator implements ConstraintValidator<Exists, UUID> {
 
     @Autowired
     private BidangRepository bidangRepository;
-
-    @Autowired
-    private KategoriRepository kategoriRepository;
 
     @Autowired
     private PegawaiRepository pegawaiRepository;
@@ -44,9 +39,6 @@ public class ExistsValidator implements ConstraintValidator<Exists, UUID> {
         }
         if (entity == Bidang.class) {
             return bidangRepository.findByUuid(value).isPresent();
-        }
-        if (entity == Kategori.class) {
-            return kategoriRepository.findByUuid(value).isPresent();
         }
         if (entity == Pegawai.class) {
             return pegawaiRepository.findByUuid(value).isPresent();

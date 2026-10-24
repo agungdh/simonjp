@@ -14,7 +14,7 @@ import java.lang.annotation.Target;
 
 /**
  * 404 ketika {@code uuid} tidak ada atau sudah soft deleted.
- * Pesan menyesuaikan resource: Kategori, Bidang, Pegawai, atau Produk.
+ * Pesan menyesuaikan resource: Bidang, Pangkat Golongan, atau Pegawai.
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
