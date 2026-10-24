@@ -57,7 +57,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y gcc g++ zlib1g-dev libfreetype6-dev
 
       - name: Build native executable
-        run: ./gradlew nativeCompile
+        run: ./gradlew nativeCompile --build-args="-march=${{ matrix.march }}"
 
       - name: Upload native executable
         uses: actions/upload-artifact@v7
