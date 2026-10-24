@@ -10,11 +10,11 @@ public final class ApiErrorExamples {
             {
               "message": "Validasi gagal",
               "fields": {
-                "nama": ["must not be blank", "size must be between 2 and 50"],
+                "nama": ["must not be blank"],
+                "nip": ["must not be blank", "size must be between 0 and 50"],
                 "email": ["must be a well-formed email address"],
-                "umur": ["must be greater than or equal to 17"],
-                "harga": ["must be greater than 0"],
-                "stok": ["must be greater than or equal to 0"]
+                "password": ["size must be between 8 and 72"],
+                "status": ["must not be null"]
               }
             }""";
 
