@@ -243,8 +243,8 @@ and predictability.
 - `ErrorResponse` carries only `message` plus an optional `fields` map. The HTTP status code is
   conveyed by the response status line and is not duplicated in the body.
 - For `@Valid` validation failures, `fields` is a map of field name -> list of messages, grouped
-  per field, so a single field can report more than one violation. For any other error, `fields`
-  is `null` and only `message` is present.
+  per field, so a single field can report more than one violation. For any other error, `fields` is
+  omitted entirely (no `"fields": null`), so the body only contains `message`.
 - Controllers annotate request bodies with `@Valid`; services throw `ResponseStatusException` (or
   domain-specific exceptions handled by the advice) for not-found / bad-request cases.
 - Validation messages come from the bean validation annotations; do not hand-build per-field
