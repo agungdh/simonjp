@@ -18,6 +18,9 @@ Environment=REDIS_PASSWORD=admin
 Environment=APP_CORS_ALLOWED_ORIGINS=http://localhost:4200
 Environment=AUTH_COOKIE_SECURE=false
 Environment=AUTH_COOKIE_SAME_SITE=Lax
+# Disable Swagger/OpenAPI in production to save memory.
+Environment=SPRINGDOC_API_DOCS_ENABLED=false
+Environment=SPRINGDOC_SWAGGER_UI_ENABLED=false
 # Uncomment to load secrets from a file instead of inline values:
 # EnvironmentFile=%h/.config/simonjp/simonjp.env
 
